@@ -8,8 +8,18 @@ class Validators {
       return 'Email address is required';
     }
 
-    if (value.trim() != 'ths@gmail.com') {
-      return 'Invalid email address';
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Please enter a valid email address';
+    }
+
+    return null;
+  }
+
+  static String? validateUsername(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Username is required';
     }
 
     return null;
@@ -20,10 +30,6 @@ class Validators {
   static String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Password is required';
-    }
-
-    if (value != 'Ths@2025') {
-      return 'Invalid password';
     }
 
     return null;

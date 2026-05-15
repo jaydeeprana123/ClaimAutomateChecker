@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
   AppTheme._();
 
   static ThemeData get lightTheme {
+    final textTheme = GoogleFonts.mulishTextTheme();
+    
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.background,
+      fontFamily: GoogleFonts.mulish().fontFamily,
+      textTheme: textTheme,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         primary: AppColors.primary,
@@ -31,7 +36,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
-          textStyle: const TextStyle(
+          textStyle: GoogleFonts.mulish(
             fontSize: 15,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
@@ -62,15 +67,15 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.error, width: 2.0),
         ),
-        hintStyle: const TextStyle(
+        hintStyle: GoogleFonts.mulish(
           color: AppColors.grey,
           fontSize: 14,
         ),
-        labelStyle: const TextStyle(
+        labelStyle: GoogleFonts.mulish(
           color: AppColors.darkGrey,
           fontSize: 14,
         ),
-        errorStyle: const TextStyle(
+        errorStyle: GoogleFonts.mulish(
           color: AppColors.error,
           fontSize: 12,
         ),

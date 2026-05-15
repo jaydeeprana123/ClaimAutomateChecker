@@ -3,14 +3,14 @@ import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../auth/login_screen.dart';
-import '../dashboard_controller.dart';
+import '../admin_controller.dart';
 
-class SidebarMenu extends StatelessWidget {
-  const SidebarMenu({super.key});
+class AdminSidebar extends StatelessWidget {
+  const AdminSidebar({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<DashboardController>();
+    final controller = Get.find<AdminController>();
 
     return Container(
       width: 250,
@@ -21,24 +21,32 @@ class SidebarMenu extends StatelessWidget {
       child: Column(
         children: [
           _buildHeader(),
+          const SizedBox(height: 10),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
-                const Text('Menu', style: AppTextStyles.labelSmall),
-                const SizedBox(height: 8),
-
+                const Padding(
+                  padding: EdgeInsets.only(left: 12, bottom: 8),
+                  child: Text('Menu', style: AppTextStyles.labelSmall),
+                ),
                 Obx(() => _buildNavItem(
                       Icons.dashboard_rounded,
                       'Dashboard',
                       isActive: controller.selectedIndex.value == 0,
-                      onTap: () => controller.changeIndex(0),
+                      onTap: () => controller.changeTabIndex(0),
                     )),
                 Obx(() => _buildNavItem(
                       Icons.people_alt_rounded,
-                      'Patients',
+                      'Users',
                       isActive: controller.selectedIndex.value == 1,
-                      onTap: () => controller.changeIndex(1),
+                      onTap: () => controller.changeTabIndex(1),
+                    )),
+                Obx(() => _buildNavItem(
+                      Icons.inventory_2_rounded,
+                      'Package',
+                      isActive: controller.selectedIndex.value == 2,
+                      onTap: () => controller.changeTabIndex(2),
                     )),
               ],
             ),
@@ -62,7 +70,7 @@ class SidebarMenu extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(
-              Icons.verified_user_rounded,
+              Icons.admin_panel_settings_rounded,
               color: AppColors.white,
             ),
           ),
@@ -71,8 +79,8 @@ class SidebarMenu extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Admin Panel', style: AppTextStyles.label),
-                Text('Claim System', style: AppTextStyles.caption),
+                Text('Admin Panel', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryDark)),
+                Text('Claim System', style: TextStyle(fontSize: 12, color: AppColors.darkGrey)),
               ],
             ),
           ),
@@ -85,47 +93,45 @@ class SidebarMenu extends StatelessWidget {
     IconData icon,
     String title, {
     bool isActive = false,
-    String? badgeCount,
     required VoidCallback onTap,
   }) {
     final color = isActive ? AppColors.primary : AppColors.darkGrey;
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
-        color: isActive
-            ? AppColors.primary.withOpacity(0.1)
-            : Colors.transparent,
+        color: isActive ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: ListTile(
-        leading: Icon(icon, color: color, size: 20),
-        title: Text(
-          title,
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: color,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+      child: Stack(
+        children: [
+          ListTile(
+            leading: Icon(icon, color: color, size: 20),
+            title: Text(
+              title,
+              style: TextStyle(
+                color: color,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                fontSize: 14,
+              ),
+            ),
+            dense: true,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            onTap: onTap,
           ),
-        ),
-        trailing: badgeCount != null
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          if (isActive)
+            Positioned(
+              left: 0,
+              top: 10,
+              bottom: 10,
+              child: Container(
+                width: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.secondary,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: Text(
-                  badgeCount,
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              )
-            : null,
-        dense: true,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        onTap: onTap,
+              ),
+            ),
+        ],
       ),
     );
   }

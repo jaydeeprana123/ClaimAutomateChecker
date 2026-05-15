@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/validators.dart';
-import '../dashboard/dashboard_screen.dart';
 import 'widgets/security_illustration.dart';
+import 'login_controller.dart';
+import 'login_repository.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,12 +16,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _isLoading = false;
-  bool _rememberMe = false;
+  late LoginController controller;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -28,6 +25,9 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    // Dependency Injection
+    controller = Get.put(LoginController(repository: LoginRepository()));
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -45,40 +45,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
     _fadeController.dispose();
     super.dispose();
-  }
-
-  Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    if (_emailController.text == "ths@gmail.com" &&
-        _passwordController.text == "Ths@2025") {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Login Successful!'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
-
-      // Navigate to dashboard
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      );
-    }
   }
 
   @override
@@ -140,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen>
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppColors.white.withValues(alpha: 0.15),
+                color: AppColors.white.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -167,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen>
                   Text(
                     'Automated Claim Verification & Processing System',
                     style: TextStyle(
-                      color: AppColors.white.withValues(alpha: 0.7),
+                      color: AppColors.white.withOpacity(0.7),
                       fontSize: isNarrow ? 10 : 12,
                       fontWeight: FontWeight.w400,
                     ),
@@ -238,13 +206,13 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildIllustrationPanel() {
     return Container(
       padding: const EdgeInsets.all(40),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [Color(0xFFF0F6FC), Color(0xFFE3EDF7)],
         ),
-        borderRadius: const BorderRadius.only(
+        borderRadius: BorderRadius.only(
           topLeft: Radius.circular(16),
           bottomLeft: Radius.circular(16),
         ),
@@ -298,12 +266,11 @@ class _LoginScreenState extends State<LoginScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
       child: Form(
-        key: _formKey,
+        key: controller.formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Title section
             Row(
               children: [
                 Container(
@@ -322,7 +289,7 @@ class _LoginScreenState extends State<LoginScreen>
             Padding(
               padding: const EdgeInsets.only(left: 14),
               child: Text(
-                'Sign in with your email and password',
+                'Sign in with your username and password',
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.darkGrey,
                 ),
@@ -330,28 +297,26 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             const SizedBox(height: 32),
 
-            // Email field
-            const Text('Email Address', style: AppTextStyles.label),
+            const Text('Username', style: AppTextStyles.label),
             const SizedBox(height: 8),
             TextFormField(
-              controller: _emailController,
+              controller: controller.userNameController,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
-              validator: Validators.validateEmail,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
+              autovalidateMode: AutovalidateMode.disabled,
               decoration: InputDecoration(
-                hintText: 'Enter your email address',
+                hintText: 'Enter your username',
                 prefixIcon: const Icon(
                   Icons.email_outlined,
                   color: AppColors.primaryAccent,
                   size: 20,
                 ),
                 suffixIcon: ValueListenableBuilder(
-                  valueListenable: _emailController,
+                  valueListenable: controller.userNameController,
                   builder: (context, value, child) {
                     if (value.text.isEmpty) return const SizedBox.shrink();
                     final isValid =
-                        Validators.validateEmail(value.text) == null;
+                        Validators.validateUsername(value.text) == null;
                     return Icon(
                       isValid
                           ? Icons.check_circle_outline
@@ -365,7 +330,6 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             const SizedBox(height: 20),
 
-            // Password field
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -383,53 +347,56 @@ class _LoginScreenState extends State<LoginScreen>
               ],
             ),
             const SizedBox(height: 8),
-            TextFormField(
-              controller: _passwordController,
-              obscureText: _obscurePassword,
-              textInputAction: TextInputAction.done,
-              validator: Validators.validatePassword,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              onFieldSubmitted: (_) => _handleLogin(),
-              decoration: InputDecoration(
-                hintText: 'Enter your password',
-                prefixIcon: const Icon(
-                  Icons.lock_outline_rounded,
-                  color: AppColors.primaryAccent,
-                  size: 20,
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: AppColors.darkGrey,
+            Obx(
+              () => TextFormField(
+                controller: controller.passwordController,
+                obscureText: controller.obscurePassword.value,
+                textInputAction: TextInputAction.done,
+                validator: Validators.validatePassword,
+                autovalidateMode: AutovalidateMode.disabled,
+                onFieldSubmitted: (_) => controller.login(),
+                decoration: InputDecoration(
+                  hintText: 'Enter your password',
+                  prefixIcon: const Icon(
+                    Icons.lock_outline_rounded,
+                    color: AppColors.primaryAccent,
                     size: 20,
                   ),
-                  onPressed: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      controller.obscurePassword.value
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: AppColors.darkGrey,
+                      size: 20,
+                    ),
+                    onPressed: controller.toggleObscurePassword,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
-            // Remember me
             Row(
               children: [
                 SizedBox(
                   height: 24,
                   width: 24,
-                  child: Checkbox(
-                    value: _rememberMe,
-                    onChanged: (v) => setState(() => _rememberMe = v ?? false),
-                    activeColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
+                  child: Obx(
+                    () => Checkbox(
+                      value: controller.rememberMe.value,
+                      onChanged: controller.toggleRememberMe,
+                      activeColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: () => setState(() => _rememberMe = !_rememberMe),
+                  onTap: () =>
+                      controller.toggleRememberMe(!controller.rememberMe.value),
                   child: const Text(
                     'Remember me',
                     style: AppTextStyles.bodySmall,
@@ -439,44 +406,44 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             const SizedBox(height: 28),
 
-            // Login button
             SizedBox(
               height: 48,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _handleLogin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
-                  disabledBackgroundColor: AppColors.primary.withValues(
-                    alpha: 0.6,
+              child: Obx(
+                () => ElevatedButton(
+                  onPressed: controller.isLoading.value
+                      ? null
+                      : controller.login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.white,
+                    disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 3,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 3,
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: AppColors.white,
+                  child: controller.isLoading.value
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.white,
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.login_rounded, size: 20),
+                            SizedBox(width: 8),
+                            Text('Sign In', style: AppTextStyles.button),
+                          ],
                         ),
-                      )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.login_rounded, size: 20),
-                          SizedBox(width: 8),
-                          Text('Sign In', style: AppTextStyles.button),
-                        ],
-                      ),
+                ),
               ),
             ),
             const SizedBox(height: 20),
 
-            // Register link
             Center(
               child: Wrap(
                 alignment: WrapAlignment.center,
@@ -511,11 +478,47 @@ class _LoginScreenState extends State<LoginScreen>
       decoration: const BoxDecoration(gradient: AppColors.headerGradient),
       child: Text(
         '© 2026 Claim Automate Checker. All Rights Reserved.',
-        style: TextStyle(
-          color: AppColors.white.withValues(alpha: 0.7),
-          fontSize: 11,
-        ),
+        style: TextStyle(color: AppColors.white.withOpacity(0.7), fontSize: 11),
         textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
+
+class FeatureBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const FeatureBadge({super.key, required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppColors.secondary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 10,
+            ),
+          ),
+        ],
       ),
     );
   }

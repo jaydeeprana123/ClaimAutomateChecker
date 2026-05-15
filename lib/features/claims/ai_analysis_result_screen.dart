@@ -165,7 +165,7 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen> with Si
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: Offset(0, 4))],
-        border: Border.all(color: AppColors.lightGrey.withValues(alpha: 0.5)),
+        border: Border.all(color: AppColors.lightGrey.withOpacity(0.5)),
       ),
       child: Row(
         children: [
@@ -174,7 +174,7 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen> with Si
             height: 120,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: color.withValues(alpha: 0.2), width: 8),
+              border: Border.all(color: color.withOpacity(0.2), width: 8),
             ),
             child: Center(
               child: Column(
@@ -216,9 +216,9 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen> with Si
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
+                    color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: color.withValues(alpha: 0.3)),
+                    border: Border.all(color: color.withOpacity(0.3)),
                   ),
                   child: Text(
                     score >= 80 ? 'Highly Confident' : 'Requires Manual Review',
@@ -240,7 +240,7 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen> with Si
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: Offset(0, 4))],
-        border: Border.all(color: AppColors.lightGrey.withValues(alpha: 0.5)),
+        border: Border.all(color: AppColors.lightGrey.withOpacity(0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,7 +250,7 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen> with Si
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.analytics_outlined, color: AppColors.primary),
