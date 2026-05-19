@@ -13,6 +13,17 @@ abstract class IAdminRepository {
   Future<bool> updateUser(String username, AdminUser user);
   Future<bool> updatePackage(String code, PackageModel package);
   Future<bool> updatePackageWeights(String code, PackageWeightsUpdate update);
+  Future<List<PackageDocument>> getPackageDocuments(String code);
+  Future<PackageDocument?> createPackageDocument(
+    String code,
+    PackageDocument doc,
+  );
+  Future<PackageDocument?> updatePackageDocument(
+    String code,
+    int docId,
+    PackageDocument doc,
+  );
+  Future<bool> deletePackageDocument(String code, int docId);
 }
 
 class AdminRepository implements IAdminRepository {
@@ -26,11 +37,7 @@ class AdminRepository implements IAdminRepository {
 
   Options _getOptions() {
     final token = StorageService.getToken();
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
+    return Options(headers: {'Authorization': 'Bearer $token'});
   }
 
   @override
@@ -145,7 +152,10 @@ class AdminRepository implements IAdminRepository {
   }
 
   @override
-  Future<bool> updatePackageWeights(String code, PackageWeightsUpdate update) async {
+  Future<bool> updatePackageWeights(
+    String code,
+    PackageWeightsUpdate update,
+  ) async {
     try {
       final response = await _dio.put(
         '/api/v1/admin/packages/$code/weights',
@@ -155,6 +165,85 @@ class AdminRepository implements IAdminRepository {
       return response.statusCode == 200;
     } catch (e) {
       AppLogger.printData("updatePackageWeights error", e.toString());
+      return false;
+    }
+  }
+
+  @override
+  Future<List<PackageDocument>> getPackageDocuments(String code) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/admin/packages/$code/documents',
+        options: _getOptions(),
+      );
+
+      if (response.statusCode == 200) {
+        final List data = response.data;
+        return data.map((json) => PackageDocument.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.printData("getPackageDocuments error", e.toString());
+      return [];
+    }
+  }
+
+  @override
+  Future<PackageDocument?> createPackageDocument(
+    String code,
+    PackageDocument doc,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/admin/packages/$code/documents',
+        data: doc.toJson(),
+        options: _getOptions(),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return PackageDocument.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.printData("createPackageDocument error", e.toString());
+      return null;
+    }
+  }
+
+  @override
+  Future<PackageDocument?> updatePackageDocument(
+    String code,
+    int docId,
+    PackageDocument doc,
+  ) async {
+    try {
+      final response = await _dio.put(
+        '/api/v1/admin/packages/$code/documents/$docId',
+        data: doc.toJson(),
+        options: _getOptions(),
+      );
+
+      if (response.statusCode == 200) {
+        return PackageDocument.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.printData("updatePackageDocument error", e.toString());
+      return null;
+    }
+  }
+
+  @override
+  Future<bool> deletePackageDocument(String code, int docId) async {
+    try {
+      final response = await _dio.delete(
+        '/api/v1/admin/packages/$code/documents/$docId',
+        options: _getOptions(),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      AppLogger.printData("deletePackageDocument error", e.toString());
       return false;
     }
   }

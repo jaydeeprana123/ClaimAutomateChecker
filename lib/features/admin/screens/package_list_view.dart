@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import 'create_package_screen.dart';
 import 'edit_package_screen.dart';
 import 'update_package_weights_screen.dart';
+import 'package_documents_screen.dart';
 
 class PackageListView extends StatelessWidget {
   const PackageListView({super.key});
@@ -134,6 +135,11 @@ class PackageListView extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            IconButton(
+              icon: const Icon(Icons.description_outlined, color: AppColors.primaryAccent),
+              onPressed: () => Get.to(() => PackageDocumentsScreen(package: package)),
+              tooltip: 'Configure Documents',
+            ),
             IconButton(
               icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
               onPressed: () => Get.to(() => EditPackageScreen(package: package)),

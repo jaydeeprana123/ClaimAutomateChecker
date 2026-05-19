@@ -74,3 +74,55 @@ class PackageWeightsUpdate {
     };
   }
 }
+
+class PackageDocument {
+  final int? id;
+  final int? packageId;
+  final String fieldKey;
+  final String label;
+  final String fieldGroup; // 'text', 'ot_notes', 'pathology', 'radiology', 'others'
+  final String dataType;   // 'string' or 'array'
+  final bool mandatory;
+  final int sortOrder;
+  final String? notes;
+
+  PackageDocument({
+    this.id,
+    this.packageId,
+    required this.fieldKey,
+    required this.label,
+    required this.fieldGroup,
+    required this.dataType,
+    this.mandatory = true,
+    this.sortOrder = 0,
+    this.notes,
+  });
+
+  factory PackageDocument.fromJson(Map<String, dynamic> json) {
+    return PackageDocument(
+      id: json['id'],
+      packageId: json['package_id'],
+      fieldKey: json['field_key'] ?? '',
+      label: json['label'] ?? '',
+      fieldGroup: json['field_group'] ?? '',
+      dataType: json['data_type'] ?? '',
+      mandatory: json['mandatory'] ?? true,
+      sortOrder: json['sort_order'] ?? 0,
+      notes: json['notes'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      if (packageId != null) 'package_id': packageId,
+      'field_key': fieldKey,
+      'label': label,
+      'field_group': fieldGroup,
+      'data_type': dataType,
+      'mandatory': mandatory,
+      'sort_order': sortOrder,
+      'notes': notes,
+    };
+  }
+}

@@ -113,7 +113,7 @@ class NewClaimScreen extends StatelessWidget {
                         _buildTextField(
                           'PMJAY Beneficiary ID',
                           controller.beneficiaryIdController,
-                          isRequired: false,
+                          isRequired: true,
                         ),
 
                         const SizedBox(height: 16),
@@ -305,6 +305,11 @@ class NewClaimScreen extends StatelessWidget {
             if (label == 'Mobile Number' && value != null && value.isNotEmpty) {
               if (value.length != 10) {
                 return 'Enter 10 digit mobile number';
+              }
+            }
+            if (label == 'PMJAY Beneficiary ID' && value != null && value.isNotEmpty) {
+              if (value.length < 5) {
+                return 'PMJAY Beneficiary ID must be at least 5 characters';
               }
             }
             return null;

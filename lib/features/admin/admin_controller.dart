@@ -161,4 +161,106 @@ class AdminController extends GetxController {
       isLoading.value = false;
     }
   }
+
+  final RxList<PackageDocument> packageDocuments = <PackageDocument>[].obs;
+  final RxBool isLoadingDocuments = false.obs;
+
+  Future<void> fetchPackageDocuments(String code) async {
+    isLoadingDocuments.value = true;
+    try {
+      final data = await repository.getPackageDocuments(code);
+      // Sort them by sortOrder ascending
+      data.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+      packageDocuments.assignAll(data);
+    } finally {
+      isLoadingDocuments.value = false;
+    }
+  }
+
+  Future<bool> createPackageDocument(String code, PackageDocument doc) async {
+    isLoadingDocuments.value = true;
+    try {
+      final newDoc = await repository.createPackageDocument(code, doc);
+      if (newDoc != null) {
+        await fetchPackageDocuments(code);
+        Get.snackbar(
+          'Success',
+          'Package document created successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to create package document',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingDocuments.value = false;
+    }
+  }
+
+  Future<bool> updatePackageDocument(String code, int docId, PackageDocument doc) async {
+    isLoadingDocuments.value = true;
+    try {
+      final updatedDoc = await repository.updatePackageDocument(code, docId, doc);
+      if (updatedDoc != null) {
+        await fetchPackageDocuments(code);
+        Get.snackbar(
+          'Success',
+          'Package document updated successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to update package document',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingDocuments.value = false;
+    }
+  }
+
+  Future<bool> deletePackageDocument(String code, int docId) async {
+    isLoadingDocuments.value = true;
+    try {
+      final success = await repository.deletePackageDocument(code, docId);
+      if (success) {
+        await fetchPackageDocuments(code);
+        Get.snackbar(
+          'Success',
+          'Package document deleted successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to delete package document',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingDocuments.value = false;
+    }
+  }
 }
