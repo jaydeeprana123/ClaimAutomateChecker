@@ -30,6 +30,8 @@ abstract class IPatientRepository {
   Future<Map<String, dynamic>?> preflightCheck(int claimId);
   Future<Map<String, dynamic>?> getClaimReport(int claimId);
   Future<List<dynamic>?> getPatientClaims(int patientId);
+  Future<List<PackageWeight>> getPackageWeights(String code);
+  Future<bool> updatePackageWeights(String code, PackageWeightsUpdate update);
 }
 
 class PatientRepository implements IPatientRepository {
@@ -363,6 +365,43 @@ class PatientRepository implements IPatientRepository {
     } catch (e) {
       AppLogger.printData("getPatientClaims error", e.toString());
       rethrow;
+    }
+  }
+
+  @override
+  Future<List<PackageWeight>> getPackageWeights(String code) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/packages/$code/weights',
+        options: _getOptions(),
+      );
+
+      if (response.statusCode == 200) {
+        final List weightsData = response.data['weights'] ?? [];
+        return weightsData.map((json) => PackageWeight.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.printData("getPackageWeights error", e.toString());
+      return [];
+    }
+  }
+
+  @override
+  Future<bool> updatePackageWeights(
+    String code,
+    PackageWeightsUpdate update,
+  ) async {
+    try {
+      final response = await _dio.put(
+        '/api/v1/packages/$code/weights',
+        data: update.toJson(),
+        options: _getOptions(),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      AppLogger.printData("updatePackageWeights error", e.toString());
+      return false;
     }
   }
 }
