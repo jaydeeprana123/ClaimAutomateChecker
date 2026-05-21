@@ -59,10 +59,18 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
         patientId,
       );
 
-      List<PackageDocument> docRules = [];
+      Map<String, List<PackageDocument>> docGroups = {};
       if (schemaData != null && schemaData['fields'] != null) {
-        final List fieldsList = schemaData['fields'];
-        docRules = fieldsList.map((f) => PackageDocument.fromJson(f)).toList();
+        if (schemaData['fields'] is Map) {
+          final Map<String, dynamic> fieldsMap = schemaData['fields'];
+          fieldsMap.forEach((key, value) {
+            if (value is List) {
+              docGroups[key] = value
+                  .map((f) => PackageDocument.fromJson(f as Map<String, dynamic>))
+                  .toList();
+            }
+          });
+        }
       }
 
       setState(() {
@@ -74,7 +82,7 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
         () => DocumentUploadScreen(
           patient: widget.patient,
           package: _selectedPackage!,
-          documentRules: docRules,
+          documentGroups: docGroups,
         ),
       );
     } catch (e) {
@@ -93,7 +101,7 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
         () => DocumentUploadScreen(
           patient: widget.patient,
           package: _selectedPackage!,
-          documentRules: const [],
+          documentGroups: const {},
         ),
       );
     }

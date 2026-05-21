@@ -60,13 +60,13 @@ class DocumentItem {
 class DocumentUploadScreen extends StatefulWidget {
   final Patient patient;
   final PackageModel package;
-  final List<PackageDocument> documentRules;
+  final Map<String, List<PackageDocument>> documentGroups;
 
   const DocumentUploadScreen({
     super.key,
     required this.patient,
     required this.package,
-    required this.documentRules,
+    required this.documentGroups,
   });
 
   @override
@@ -74,16 +74,56 @@ class DocumentUploadScreen extends StatefulWidget {
 }
 
 class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
-  late final List<DocumentItem> _documents;
-  final Map<int, bool> _extractingStatus = {};
+  late final Map<String, List<DocumentItem>> _stepDocuments;
+  late final List<String> _stepKeys;
+  int _currentStepIndex = 0;
+  final Map<DocumentItem, bool> _extractingStatus = {};
   bool _isSubmitting = false;
+
+  List<DocumentItem> get _documents {
+    final list = <DocumentItem>[];
+    for (final key in _stepKeys) {
+      list.addAll(_stepDocuments[key] ?? []);
+    }
+    return list;
+  }
+
+  List<DocumentItem> get _currentDocuments {
+    if (_stepKeys.isEmpty) return [];
+    return _stepDocuments[_stepKeys[_currentStepIndex]] ?? [];
+  }
 
   @override
   void initState() {
     super.initState();
 
-    if (widget.documentRules.isNotEmpty) {
-      _documents = widget.documentRules.map((rule) {
+    _stepDocuments = {};
+
+    // Sort keys based on the minimum sort_order of their documents
+    final keys = widget.documentGroups.keys.toList();
+    keys.sort((a, b) {
+      final listA = widget.documentGroups[a] ?? [];
+      final listB = widget.documentGroups[b] ?? [];
+      final minA = listA.isEmpty
+          ? 999
+          : listA
+                .map((d) => d.sortOrder)
+                .reduce((curr, next) => curr < next ? curr : next);
+      final minB = listB.isEmpty
+          ? 999
+          : listB
+                .map((d) => d.sortOrder)
+                .reduce((curr, next) => curr < next ? curr : next);
+      return minA.compareTo(minB);
+    });
+
+    _stepKeys = keys
+        .where((k) => widget.documentGroups[k]!.isNotEmpty)
+        .toList();
+
+    for (final key in _stepKeys) {
+      final rules = widget.documentGroups[key] ?? [];
+      _stepDocuments[key] = rules.map((rule) {
         return DocumentItem(
           type: rule.label,
           requiredFormat:
@@ -98,8 +138,6 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           dataType: rule.dataType,
         );
       }).toList();
-    } else {
-      _documents = [];
     }
   }
 
@@ -111,9 +149,31 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     super.dispose();
   }
 
+  String _formatStepTitle(String key) {
+    if (key.isEmpty) return '';
+    return key
+        .split(RegExp(r'[\s_]+'))
+        .map(
+          (word) => word.isEmpty
+              ? ''
+              : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+        )
+        .join(' ');
+  }
+
+  bool _isStepCompleted(String key) {
+    final docs = _stepDocuments[key] ?? [];
+    if (docs.isEmpty) return false;
+    final mandatoryCompleted = docs.every(
+      (d) => !d.isMandatory || d.isUploaded,
+    );
+    if (!mandatoryCompleted) return false;
+    return docs.any((d) => d.isUploaded);
+  }
+
   /// Opens the file picker using file_picker (cross-platform).
   Future<void> _pickFile(int index) async {
-    final doc = _documents[index];
+    final doc = _currentDocuments[index];
 
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -144,12 +204,11 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
 
   void _removeFile(int docIndex, int fileIndex) {
     setState(() {
-      _documents[docIndex].files.removeAt(fileIndex);
+      _currentDocuments[docIndex].files.removeAt(fileIndex);
     });
   }
 
-  Future<void> _handleExtractFields(int index) async {
-    final doc = _documents[index];
+  Future<void> _handleExtractFields(DocumentItem doc) async {
     if (doc.files.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -162,7 +221,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     }
 
     setState(() {
-      _extractingStatus[index] = true;
+      _extractingStatus[doc] = true;
     });
 
     try {
@@ -180,7 +239,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
       if (!mounted) return;
 
       setState(() {
-        _extractingStatus[index] = false;
+        _extractingStatus[doc] = false;
         if (resultString != null) {
           try {
             final decoded = jsonDecode(resultString);
@@ -233,7 +292,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _extractingStatus[index] = false;
+        _extractingStatus[doc] = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -297,24 +356,60 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   void _submitFinalClaim() {
     if (_isSubmitting) return;
 
-    final allUploaded = _documents.every((d) => !d.isMandatory || d.isUploaded);
-
-    if (!allUploaded) {
-      final missing = _documents
+    for (int i = 0; i < _stepKeys.length; i++) {
+      final key = _stepKeys[i];
+      final docs = _stepDocuments[key] ?? [];
+      final incomplete = docs
           .where((d) => d.isMandatory && !d.isUploaded)
-          .map((d) => d.type)
-          .join(', ');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Pending: $missing'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
+          .toList();
+      if (incomplete.isNotEmpty) {
+        setState(() {
+          _currentStepIndex = i;
+        });
+        final missing = incomplete.map((d) => d.type).join(', ');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Pending in ${_formatStepTitle(key)}: $missing'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
     }
 
     _showClaimDetailsDialog();
+  }
+
+  void _handleNextOrSubmit() {
+    if (_currentStepIndex < _stepKeys.length - 1) {
+      // Validate current step
+      final currentKey = _stepKeys[_currentStepIndex];
+      final docs = _stepDocuments[currentKey] ?? [];
+      final incompleteDocs = docs
+          .where((d) => d.isMandatory && !d.isUploaded)
+          .toList();
+
+      if (incompleteDocs.isNotEmpty) {
+        final missingNames = incompleteDocs.map((d) => d.type).join(', ');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Please fill mandatory fields in ${_formatStepTitle(currentKey)}: $missingNames',
+            ),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      setState(() {
+        _currentStepIndex++;
+      });
+    } else {
+      _submitFinalClaim();
+    }
   }
 
   Future<void> _showClaimDetailsDialog() async {
@@ -331,7 +426,9 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               title: Row(
                 children: [
                   Container(
@@ -340,10 +437,16 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                       color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.description_outlined, color: AppColors.primary),
+                    child: const Icon(
+                      Icons.description_outlined,
+                      color: AppColors.primary,
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Hospitalization Details', style: AppTextStyles.heading2),
+                  const Text(
+                    'Hospitalization Details',
+                    style: AppTextStyles.heading2,
+                  ),
                 ],
               ),
               content: Form(
@@ -355,7 +458,10 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                     children: [
                       const Text(
                         'Please provide the hospitalization details to finalize the claim submission.',
-                        style: TextStyle(color: AppColors.darkGrey, fontSize: 13),
+                        style: TextStyle(
+                          color: AppColors.darkGrey,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -363,10 +469,16 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                         decoration: InputDecoration(
                           labelText: 'Hospital ID',
                           prefixIcon: const Icon(Icons.local_hospital_outlined),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
                       // Admission Date field
@@ -388,8 +500,13 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                           decoration: InputDecoration(
                             labelText: 'Admission Date',
                             prefixIcon: const Icon(Icons.login_outlined),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                           ),
                           child: Text(
                             '${admissionDate.year}-${admissionDate.month.toString().padLeft(2, '0')}-${admissionDate.day.toString().padLeft(2, '0')}',
@@ -417,8 +534,13 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                           decoration: InputDecoration(
                             labelText: 'Discharge Date',
                             prefixIcon: const Icon(Icons.logout_outlined),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                           ),
                           child: Text(
                             '${dischargeDate.year}-${dischargeDate.month.toString().padLeft(2, '0')}-${dischargeDate.day.toString().padLeft(2, '0')}',
@@ -433,7 +555,10 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel', style: TextStyle(color: AppColors.darkGrey)),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: AppColors.darkGrey),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -441,7 +566,9 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                       if (dischargeDate.isBefore(admissionDate)) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Discharge date cannot be before admission date.'),
+                            content: Text(
+                              'Discharge date cannot be before admission date.',
+                            ),
                             backgroundColor: AppColors.error,
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -560,7 +687,9 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           context: context,
           barrierDismissible: false,
           builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Row(
               children: [
                 Icon(Icons.check_circle, color: AppColors.success, size: 32),
@@ -576,7 +705,9 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop(); // pop success dialog
-                  Navigator.of(context).popUntil((r) => r.isFirst); // return to dashboard
+                  Navigator.of(
+                    context,
+                  ).popUntil((r) => r.isFirst); // return to dashboard
                 },
                 child: const Text(
                   'Return to Dashboard',
@@ -625,6 +756,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -646,6 +778,10 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Step Indicator
+                _buildStepIndicator(),
+                const SizedBox(height: 12),
+
                 // ── Card ────────────────────────────────────────────────────
                 Container(
                   padding: const EdgeInsets.all(24),
@@ -682,7 +818,9 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                           ),
                           const SizedBox(width: 16),
                           Text(
-                            'Upload Required Documents',
+                            _stepKeys.isNotEmpty
+                                ? _formatStepTitle(_stepKeys[_currentStepIndex])
+                                : 'Upload Required Documents',
                             style: AppTextStyles.heading2.copyWith(
                               color: AppColors.primaryDark,
                             ),
@@ -691,8 +829,8 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Upload an image for each document. '
-                        'Tap the thumbnail to zoom in, then fill in the notes field manually.',
+                        'Upload an image/document for this step. '
+                        'Tap the thumbnail to zoom in, and fill in any text field inputs.',
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: AppColors.darkGrey,
                         ),
@@ -700,52 +838,301 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                       const SizedBox(height: 24),
 
                       // Responsive layout
-                      LayoutBuilder(
-                        builder: (ctx, constraints) =>
-                            constraints.maxWidth > 620
-                            ? _buildDesktopTable()
-                            : _buildMobileList(),
-                      ),
+                      if (_currentDocuments.isEmpty)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40.0),
+                            child: Text(
+                              'No documents to upload for this step.',
+                              style: TextStyle(
+                                color: AppColors.darkGrey,
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        LayoutBuilder(
+                          builder: (ctx, constraints) =>
+                              constraints.maxWidth > 620
+                              ? _buildDesktopTable()
+                              : _buildMobileList(),
+                        ),
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 32),
 
-                // ── Submit button ────────────────────────────────────────────
-                SizedBox(
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: _isSubmitting ? null : _submitFinalClaim,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 4,
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : const Text(
-                            'Finalize Claim Submission',
-                            style: AppTextStyles.button,
-                          ),
-                  ),
-                ),
+                // ── Navigation Buttons ────────────────────────────────────────────
+                _buildNavigationRow(),
                 const SizedBox(height: 32),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // ── Step Indicator ──────────────────────────────────────────────────────────
+
+  Widget _buildStepIndicator() {
+    if (_stepKeys.length <= 1) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.cardShadow,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: AppColors.lightGrey.withOpacity(0.5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: List.generate(_stepKeys.length * 2 - 1, (index) {
+          if (index.isOdd) {
+            // Connecting line
+            final stepIndex = index ~/ 2;
+            final isLineCompleted = _isStepCompleted(_stepKeys[stepIndex]);
+            return Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    height: 36,
+                    alignment: Alignment.center,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      height: 3,
+                      color: isLineCompleted
+                          ? AppColors.success
+                          : AppColors.lightGrey,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Empty space matching label height to keep line columns aligned
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          } else {
+            // Step bubble + label
+            final stepIndex = index ~/ 2;
+            final key = _stepKeys[stepIndex];
+            final isCurrent = stepIndex == _currentStepIndex;
+            final isCompleted = _isStepCompleted(key);
+            final title = _formatStepTitle(key);
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Tooltip(
+                  message: title,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _currentStepIndex = stepIndex;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: isCurrent
+                            ? AppColors.primary
+                            : (isCompleted
+                                  ? AppColors.success
+                                  : AppColors.background),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isCurrent
+                              ? AppColors.primaryDark
+                              : (isCompleted
+                                    ? AppColors.success
+                                    : AppColors.grey),
+                          width: 2,
+                        ),
+                        boxShadow: isCurrent
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.primary.withOpacity(0.4),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Center(
+                        child: isCompleted
+                            ? const Icon(
+                                Icons.check,
+                                size: 18,
+                                color: Colors.white,
+                              )
+                            : Text(
+                                '${stepIndex + 1}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isCurrent
+                                      ? Colors.white
+                                      : AppColors.darkGrey,
+                                  fontSize: 14,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: 36,
+                  height: 16,
+                  child: OverflowBox(
+                    minWidth: 0,
+                    maxWidth: 120,
+                    minHeight: 0,
+                    maxHeight: 16,
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                        color: isCurrent
+                            ? AppColors.primary
+                            : (isCompleted
+                                  ? AppColors.success
+                                  : AppColors.darkGrey),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+        }),
+      ),
+    );
+  }
+
+  // ── Navigation Row ──────────────────────────────────────────────────────────
+
+  Widget _buildNavigationRow() {
+    if (_stepKeys.isEmpty) {
+      return SizedBox(
+        height: 54,
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: _isSubmitting ? null : _submitFinalClaim,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 4,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : const Text(
+                  'Finalize Claim Submission',
+                  style: AppTextStyles.button,
+                ),
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        if (_currentStepIndex > 0)
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12.0),
+              child: SizedBox(
+                height: 54,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _currentStepIndex--;
+                    });
+                  },
+                  icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+                  label: const Text(
+                    'Previous Step',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          const SizedBox.shrink(),
+        Expanded(
+          child: SizedBox(
+            height: 54,
+            child: ElevatedButton.icon(
+              onPressed: _isSubmitting ? null : _handleNextOrSubmit,
+              icon: Icon(
+                _currentStepIndex == _stepKeys.length - 1
+                    ? Icons.check_circle_outline
+                    : Icons.arrow_forward,
+                color: Colors.white,
+              ),
+              label: Text(
+                _currentStepIndex == _stepKeys.length - 1
+                    ? 'Finalize Claim'
+                    : 'Next Step',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.grey.withOpacity(0.3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -785,14 +1172,15 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
               _tableHeader('Action'),
             ],
           ),
-          for (int i = 0; i < _documents.length; i++) _buildDesktopRow(i),
+          for (int i = 0; i < _currentDocuments.length; i++)
+            _buildDesktopRow(i),
         ],
       ),
     );
   }
 
   TableRow _buildDesktopRow(int i) {
-    final doc = _documents[i];
+    final doc = _currentDocuments[i];
     final isArrayType = doc.dataType == 'array';
     final isTextOrOtNotes =
         (doc.fieldGroup == 'text' || doc.fieldGroup == 'ot_notes') &&
@@ -979,7 +1367,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                       ),
                       if (doc.dataType == 'string' && doc.files.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        _extractingStatus[i] == true
+                        _extractingStatus[doc] == true
                             ? const Padding(
                                 padding: EdgeInsets.only(left: 12),
                                 child: SizedBox(
@@ -994,7 +1382,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                                 ),
                               )
                             : ElevatedButton.icon(
-                                onPressed: () => _handleExtractFields(i),
+                                onPressed: () => _handleExtractFields(doc),
                                 icon: const Icon(
                                   Icons.psychology,
                                   size: 16,
@@ -1033,11 +1421,11 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: _documents.length,
+      itemCount: _currentDocuments.length,
       separatorBuilder: (context, index) =>
           const Divider(color: AppColors.lightGrey, height: 1),
       itemBuilder: (_, i) {
-        final doc = _documents[i];
+        final doc = _currentDocuments[i];
         final isArrayType = doc.dataType == 'array';
         final isTextOrOtNotes =
             (doc.fieldGroup == 'text' || doc.fieldGroup == 'ot_notes') &&
@@ -1068,7 +1456,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (doc.dataType == 'string') ...[
-                          _extractingStatus[i] == true
+                          _extractingStatus[doc] == true
                               ? const Padding(
                                   padding: EdgeInsets.only(right: 12.0),
                                   child: SizedBox(
@@ -1085,7 +1473,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                               : Padding(
                                   padding: const EdgeInsets.only(right: 8.0),
                                   child: ElevatedButton.icon(
-                                    onPressed: () => _handleExtractFields(i),
+                                    onPressed: () => _handleExtractFields(doc),
                                     icon: const Icon(
                                       Icons.psychology,
                                       size: 16,
