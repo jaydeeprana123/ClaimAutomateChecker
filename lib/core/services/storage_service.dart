@@ -5,6 +5,7 @@ class StorageService {
 
   static const String _tokenKey = 'access_token';
   static const String _userDataKey = 'user_data';
+  static const String _baseUrlKey = 'api_base_url';
 
   static Future<void> saveToken(String token) async {
     await _storage.write(_tokenKey, token);
@@ -20,6 +21,14 @@ class StorageService {
 
   static Map<String, dynamic>? getUserData() {
     return _storage.read(_userDataKey);
+  }
+
+  static Future<void> saveBaseUrl(String url) async {
+    await _storage.write(_baseUrlKey, url);
+  }
+
+  static String? getBaseUrl() {
+    return _storage.read(_baseUrlKey);
   }
 
   static String? getRole() {

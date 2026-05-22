@@ -78,8 +78,10 @@ class PackageWeightsUpdate {
 class PackageDocument {
   final int? id;
   final int? packageId;
+  final int? fieldKeyId;
   final String fieldKey;
   final String label;
+  final int? fieldGroupId;
   final String fieldGroup; // 'text', 'ot_notes', 'pathology', 'radiology', 'others'
   final String dataType;   // 'string' or 'array'
   final bool mandatory;
@@ -89,8 +91,10 @@ class PackageDocument {
   PackageDocument({
     this.id,
     this.packageId,
+    this.fieldKeyId,
     required this.fieldKey,
     required this.label,
+    this.fieldGroupId,
     required this.fieldGroup,
     required this.dataType,
     this.mandatory = true,
@@ -102,8 +106,10 @@ class PackageDocument {
     return PackageDocument(
       id: json['id'],
       packageId: json['package_id'],
+      fieldKeyId: json['field_key_id'],
       fieldKey: json['field_key'] ?? '',
       label: json['label'] ?? '',
+      fieldGroupId: json['field_group_id'],
       fieldGroup: json['field_group'] ?? '',
       dataType: json['data_type'] ?? '',
       mandatory: json['mandatory'] ?? true,
@@ -116,8 +122,10 @@ class PackageDocument {
     return {
       if (id != null) 'id': id,
       if (packageId != null) 'package_id': packageId,
+      if (fieldKeyId != null) 'field_key_id': fieldKeyId,
       'field_key': fieldKey,
       'label': label,
+      if (fieldGroupId != null) 'field_group_id': fieldGroupId,
       'field_group': fieldGroup,
       'data_type': dataType,
       'mandatory': mandatory,

@@ -30,24 +30,38 @@ class AdminSidebar extends StatelessWidget {
                   padding: EdgeInsets.only(left: 12, bottom: 8),
                   child: Text('Menu', style: AppTextStyles.labelSmall),
                 ),
-                Obx(() => _buildNavItem(
-                      Icons.dashboard_rounded,
-                      'Dashboard',
-                      isActive: controller.selectedIndex.value == 0,
-                      onTap: () => controller.changeTabIndex(0),
-                    )),
-                Obx(() => _buildNavItem(
-                      Icons.people_alt_rounded,
-                      'Users',
-                      isActive: controller.selectedIndex.value == 1,
-                      onTap: () => controller.changeTabIndex(1),
-                    )),
-                Obx(() => _buildNavItem(
-                      Icons.inventory_2_rounded,
-                      'Package',
-                      isActive: controller.selectedIndex.value == 2,
-                      onTap: () => controller.changeTabIndex(2),
-                    )),
+                Obx(
+                  () => _buildNavItem(
+                    Icons.dashboard_rounded,
+                    'Dashboard',
+                    isActive: controller.selectedIndex.value == 0,
+                    onTap: () => controller.changeTabIndex(0),
+                  ),
+                ),
+                Obx(
+                  () => _buildNavItem(
+                    Icons.people_alt_rounded,
+                    'Users',
+                    isActive: controller.selectedIndex.value == 1,
+                    onTap: () => controller.changeTabIndex(1),
+                  ),
+                ),
+                Obx(
+                  () => _buildNavItem(
+                    Icons.inventory_2_rounded,
+                    'Package',
+                    isActive: controller.selectedIndex.value == 2,
+                    onTap: () => controller.changeTabIndex(2),
+                  ),
+                ),
+                Obx(
+                  () => _buildNavItem(
+                    Icons.text_fields_rounded,
+                    'Text Field Groups',
+                    isActive: controller.selectedIndex.value == 3,
+                    onTap: () => controller.changeTabIndex(3),
+                  ),
+                ),
               ],
             ),
           ),
@@ -79,8 +93,18 @@ class AdminSidebar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Admin Panel', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryDark)),
-                Text('Claim System', style: TextStyle(fontSize: 12, color: AppColors.darkGrey)),
+                Text(
+                  'Admin Panel',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+                Text(
+                  'Claim System',
+                  style: TextStyle(fontSize: 12, color: AppColors.darkGrey),
+                ),
               ],
             ),
           ),
@@ -99,7 +123,9 @@ class AdminSidebar extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
-        color: isActive ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+        color: isActive
+            ? AppColors.primary.withValues(alpha: 0.1)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Stack(
@@ -115,7 +141,9 @@ class AdminSidebar extends StatelessWidget {
               ),
             ),
             dense: true,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
             onTap: onTap,
           ),
           if (isActive)

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../admin_controller.dart';
 import '../package_model.dart';
+import '../text_field_group_model.dart';
 import '../../../core/theme/app_colors.dart';
 
 class PackageDocumentsScreen extends StatefulWidget {
@@ -19,16 +20,19 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
   void initState() {
     super.initState();
     controller.fetchPackageDocuments(widget.package.code);
+    controller.fetchTextFieldGroups();
   }
 
   void _showAddDocumentDialog() {
     final formKey = GlobalKey<FormState>();
-    final fieldKeyController = TextEditingController();
     final labelController = TextEditingController();
     final notesController = TextEditingController();
     final sortOrderController = TextEditingController(text: '0');
     
-    String selectedFieldGroup = 'text';
+    int? selectedFieldGroupId;
+    int? selectedFieldKeyId;
+    List<TextFieldGroupMappingResponse> mappedFields = [];
+    bool isLoadingFields = false;
     String selectedDataType = 'string';
     bool isMandatory = true;
 
@@ -42,222 +46,346 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryAccent.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.note_add_outlined, color: AppColors.primaryAccent),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryAccent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.note_add_outlined, color: AppColors.primaryAccent),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Add Document Rule',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryDark,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Add Document Rule',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primaryDark,
-                            ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: AppColors.darkGrey),
+                            onPressed: () => Get.back(),
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: AppColors.darkGrey),
-                        onPressed: () => Get.back(),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24, thickness: 1),
-                  const SizedBox(height: 8),
-                  
-                  // Label Field
-                  TextFormField(
-                    controller: labelController,
-                    decoration: InputDecoration(
-                      labelText: 'Label (e.g. Discharge Summary)',
-                      prefixIcon: const Icon(Icons.label_outline),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 16),
+                      const Divider(height: 24, thickness: 1),
+                      const SizedBox(height: 8),
 
-                  // Field Key Field
-                  TextFormField(
-                    controller: fieldKeyController,
-                    decoration: InputDecoration(
-                      labelText: 'Field Key (e.g. discharge_summary)',
-                      prefixIcon: const Icon(Icons.key_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Field Group Dropdown
-                  DropdownButtonFormField<String>(
-                    value: selectedFieldGroup,
-                    decoration: InputDecoration(
-                      labelText: 'Field Group',
-                      prefixIcon: const Icon(Icons.folder_open_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'text', child: Text('Text / Document')),
-                      DropdownMenuItem(value: 'ot_notes', child: Text('OT Notes')),
-                      DropdownMenuItem(value: 'pathology', child: Text('Pathology')),
-                      DropdownMenuItem(value: 'radiology', child: Text('Radiology')),
-                      DropdownMenuItem(value: 'others', child: Text('Others')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        selectedFieldGroup = val;
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Data Type Dropdown
-                  DropdownButtonFormField<String>(
-                    value: selectedDataType,
-                    decoration: InputDecoration(
-                      labelText: 'Data Type',
-                      prefixIcon: const Icon(Icons.data_object_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'string', child: Text('Single File (string)')),
-                      DropdownMenuItem(value: 'array', child: Text('Multiple Files (array)')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        selectedDataType = val;
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Sort Order & Mandatory Row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: sortOrderController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Sort Order',
-                            prefixIcon: const Icon(Icons.sort_outlined),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) return 'Required';
-                            if (int.tryParse(value) == null) return 'Must be numeric';
-                            return null;
-                          },
+                      // Field Group Dropdown
+                      DropdownButtonFormField<int>(
+                        value: selectedFieldGroupId,
+                        decoration: InputDecoration(
+                          labelText: 'Field Group',
+                          prefixIcon: const Icon(Icons.folder_open_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      StatefulBuilder(
-                        builder: (context, setStateDialog) => Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Mandatory',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey),
-                            ),
-                            Switch(
-                              value: isMandatory,
-                              activeColor: AppColors.primary,
-                              onChanged: (val) {
-                                setStateDialog(() {
-                                  isMandatory = val;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Notes Field
-                  TextFormField(
-                    controller: notesController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Guideline Notes (Optional)',
-                      prefixIcon: const Icon(Icons.info_outline),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Get.back(),
-                        child: const Text('Cancel', style: TextStyle(color: AppColors.darkGrey)),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        onPressed: () async {
-                          if (formKey.currentState!.validate()) {
-                            final doc = PackageDocument(
-                              fieldKey: fieldKeyController.text.trim(),
-                              label: labelController.text.trim(),
-                              fieldGroup: selectedFieldGroup,
-                              dataType: selectedDataType,
-                              mandatory: isMandatory,
-                              sortOrder: int.parse(sortOrderController.text),
-                              notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
-                            );
-                            final success = await controller.createPackageDocument(widget.package.code, doc);
-                            if (success) {
-                              Get.back(); // Pop the dialog on success
+                        validator: (value) => value == null ? 'Required' : null,
+                        items: controller.textFieldGroups.map((g) {
+                          return DropdownMenuItem<int>(
+                            value: g.id,
+                            child: Text(g.groupName),
+                          );
+                        }).toList(),
+                        onChanged: (val) async {
+                          if (val != null) {
+                            setStateDialog(() {
+                              selectedFieldGroupId = val;
+                              selectedFieldKeyId = null;
+                              mappedFields = [];
+                              isLoadingFields = true;
+                            });
+                            try {
+                              final fields = await controller.getGroupMappings(val);
+                              setStateDialog(() {
+                                mappedFields = fields;
+                                isLoadingFields = false;
+                              });
+                            } catch (e) {
+                              setStateDialog(() {
+                                isLoadingFields = false;
+                              });
                             }
                           }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Field Key Dropdown (dynamic)
+                      if (selectedFieldGroupId == null)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.grey.shade50,
+                          ),
+                          child: const Text(
+                            'Please select a Field Group first to view its fields.',
+                            style: TextStyle(color: AppColors.darkGrey, fontSize: 13),
+                          ),
+                        )
+                      else if (isLoadingFields)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (mappedFields.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.grey.shade50,
+                          ),
+                          child: const Text(
+                            'No fields are mapped to the selected group.',
+                            style: TextStyle(color: AppColors.error, fontSize: 13),
+                          ),
+                        )
+                      else
+                        DropdownButtonFormField<int>(
+                          value: selectedFieldKeyId,
+                          decoration: InputDecoration(
+                            labelText: 'Field Key',
+                            prefixIcon: const Icon(Icons.key_outlined),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          validator: (value) => value == null ? 'Required' : null,
+                          items: mappedFields.map((f) {
+                            return DropdownMenuItem<int>(
+                              value: f.fieldId,
+                              child: Text(f.fieldName),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setStateDialog(() {
+                                selectedFieldKeyId = val;
+                                // Auto-fill Label based on the field name
+                                final selectedMapping = mappedFields.firstWhere((f) => f.fieldId == val);
+                                labelController.text = selectedMapping.fieldName
+                                    .replaceAll('_', ' ')
+                                    .split(' ')
+                                    .map((word) => word.isEmpty ? '' : '${word[0].toUpperCase()}${word.substring(1)}')
+                                    .join(' ');
+                              });
+                            }
+                          },
                         ),
-                        child: const Text('Add Rule', style: TextStyle(color: Colors.white)),
+                      const SizedBox(height: 16),
+
+                      // Label Field
+                      TextFormField(
+                        controller: labelController,
+                        decoration: InputDecoration(
+                          labelText: 'Label (e.g. Discharge Summary)',
+                          prefixIcon: const Icon(Icons.label_outline),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Data Type Dropdown
+                      DropdownButtonFormField<String>(
+                        value: selectedDataType,
+                        decoration: InputDecoration(
+                          labelText: 'Data Type',
+                          prefixIcon: const Icon(Icons.data_object_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'string', child: Text('Single File (string)')),
+                          DropdownMenuItem(value: 'array', child: Text('Multiple Files (array)')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setStateDialog(() {
+                              selectedDataType = val;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Sort Order & Mandatory Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: sortOrderController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Sort Order',
+                                prefixIcon: const Icon(Icons.sort_outlined),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) return 'Required';
+                                if (int.tryParse(value) == null) return 'Must be numeric';
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Mandatory',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey),
+                              ),
+                              Switch(
+                                value: isMandatory,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isMandatory = val;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Notes Field
+                      TextFormField(
+                        controller: notesController,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          labelText: 'Guideline Notes (Optional)',
+                          prefixIcon: const Icon(Icons.info_outline),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Get.back(),
+                            child: const Text('Cancel', style: TextStyle(color: AppColors.darkGrey)),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () async {
+                              if (formKey.currentState!.validate()) {
+                                // Find selected group's group name for local state compatibility
+                                final groupName = controller.textFieldGroups
+                                    .firstWhere((g) => g.id == selectedFieldGroupId)
+                                    .groupName;
+                                
+                                // Find selected field's field name for local state compatibility
+                                final fieldName = mappedFields
+                                    .firstWhere((f) => f.fieldId == selectedFieldKeyId)
+                                    .fieldName;
+
+                                final doc = PackageDocument(
+                                  fieldKeyId: selectedFieldKeyId,
+                                  fieldKey: fieldName,
+                                  label: labelController.text.trim(),
+                                  fieldGroupId: selectedFieldGroupId,
+                                  fieldGroup: groupName,
+                                  dataType: selectedDataType,
+                                  mandatory: isMandatory,
+                                  sortOrder: int.parse(sortOrderController.text),
+                                  notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
+                                );
+                                final success = await controller.createPackageDocument(widget.package.code, doc);
+                                if (success) {
+                                  Get.back(); // Pop the dialog on success
+                                }
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('Add Rule', style: TextStyle(color: Colors.white)),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  void _showEditDocumentDialog(PackageDocument doc) {
+  void _showEditDocumentDialog(PackageDocument doc) async {
+    // Show a loading overlay while fetching the mappings for the document's group
+    Get.showOverlay(
+      asyncFunction: () async {
+        if (doc.fieldGroupId != null) {
+          return await controller.getGroupMappings(doc.fieldGroupId!);
+        }
+        return <TextFieldGroupMappingResponse>[];
+      },
+      loadingWidget: const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text('Loading field mappings...', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).then((mappings) {
+      _showEditDocumentDialogWithMappings(doc, mappings);
+    });
+  }
+
+  void _showEditDocumentDialogWithMappings(PackageDocument doc, List<TextFieldGroupMappingResponse> initialMappings) {
     final formKey = GlobalKey<FormState>();
-    final fieldKeyController = TextEditingController(text: doc.fieldKey);
     final labelController = TextEditingController(text: doc.label);
     final notesController = TextEditingController(text: doc.notes ?? '');
     final sortOrderController = TextEditingController(text: doc.sortOrder.toString());
     
-    String selectedFieldGroup = doc.fieldGroup;
+    int? selectedFieldGroupId = doc.fieldGroupId;
+    int? selectedFieldKeyId = doc.fieldKeyId;
+    List<TextFieldGroupMappingResponse> mappedFields = initialMappings;
+    bool isLoadingFields = false;
     String selectedDataType = doc.dataType;
     bool isMandatory = doc.mandatory;
+
+    // Safety check in case the loaded mapping doesn't contain the currently selected key ID
+    if (selectedFieldKeyId != null && !mappedFields.any((f) => f.fieldId == selectedFieldKeyId)) {
+      selectedFieldKeyId = null;
+    }
 
     Get.dialog(
       Dialog(
@@ -269,214 +397,302 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryAccent.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.edit_note_outlined, color: AppColors.primaryAccent),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryAccent.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.edit_note_outlined, color: AppColors.primaryAccent),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Edit Document Rule',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primaryDark,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Edit Document Rule',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primaryDark,
-                            ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: AppColors.darkGrey),
+                            onPressed: () => Get.back(),
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: AppColors.darkGrey),
-                        onPressed: () => Get.back(),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24, thickness: 1),
-                  const SizedBox(height: 8),
-                  
-                  // Label Field
-                  TextFormField(
-                    controller: labelController,
-                    decoration: InputDecoration(
-                      labelText: 'Label (e.g. Discharge Summary)',
-                      prefixIcon: const Icon(Icons.label_outline),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 16),
+                      const Divider(height: 24, thickness: 1),
+                      const SizedBox(height: 8),
 
-                  // Field Key Field
-                  TextFormField(
-                    controller: fieldKeyController,
-                    decoration: InputDecoration(
-                      labelText: 'Field Key (e.g. discharge_summary)',
-                      prefixIcon: const Icon(Icons.key_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Field Group Dropdown
-                  DropdownButtonFormField<String>(
-                    value: selectedFieldGroup,
-                    decoration: InputDecoration(
-                      labelText: 'Field Group',
-                      prefixIcon: const Icon(Icons.folder_open_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'text', child: Text('Text / Document')),
-                      DropdownMenuItem(value: 'ot_notes', child: Text('OT Notes')),
-                      DropdownMenuItem(value: 'pathology', child: Text('Pathology')),
-                      DropdownMenuItem(value: 'radiology', child: Text('Radiology')),
-                      DropdownMenuItem(value: 'others', child: Text('Others')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        selectedFieldGroup = val;
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Data Type Dropdown
-                  DropdownButtonFormField<String>(
-                    value: selectedDataType,
-                    decoration: InputDecoration(
-                      labelText: 'Data Type',
-                      prefixIcon: const Icon(Icons.data_object_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'string', child: Text('Single File (string)')),
-                      DropdownMenuItem(value: 'array', child: Text('Multiple Files (array)')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        selectedDataType = val;
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Sort Order & Mandatory Row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: sortOrderController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: 'Sort Order',
-                            prefixIcon: const Icon(Icons.sort_outlined),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) return 'Required';
-                            if (int.tryParse(value) == null) return 'Must be numeric';
-                            return null;
-                          },
+                      // Field Group Dropdown
+                      DropdownButtonFormField<int>(
+                        value: selectedFieldGroupId,
+                        decoration: InputDecoration(
+                          labelText: 'Field Group',
+                          prefixIcon: const Icon(Icons.folder_open_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      StatefulBuilder(
-                        builder: (context, setStateDialog) => Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Mandatory',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey),
-                            ),
-                            Switch(
-                              value: isMandatory,
-                              activeColor: AppColors.primary,
-                              onChanged: (val) {
-                                setStateDialog(() {
-                                  isMandatory = val;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Notes Field
-                  TextFormField(
-                    controller: notesController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Guideline Notes (Optional)',
-                      prefixIcon: const Icon(Icons.info_outline),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Get.back(),
-                        child: const Text('Cancel', style: TextStyle(color: AppColors.darkGrey)),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        onPressed: () async {
-                          if (formKey.currentState!.validate()) {
-                            final updatedDoc = PackageDocument(
-                              id: doc.id,
-                              packageId: doc.packageId,
-                              fieldKey: fieldKeyController.text.trim(),
-                              label: labelController.text.trim(),
-                              fieldGroup: selectedFieldGroup,
-                              dataType: selectedDataType,
-                              mandatory: isMandatory,
-                              sortOrder: int.parse(sortOrderController.text),
-                              notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
-                            );
-                            if (doc.id != null) {
-                              final success = await controller.updatePackageDocument(
-                                widget.package.code,
-                                doc.id!,
-                                updatedDoc,
-                              );
-                              if (success) {
-                                Get.back(); // Pop the dialog on success
-                              }
+                        validator: (value) => value == null ? 'Required' : null,
+                        items: controller.textFieldGroups.map((g) {
+                          return DropdownMenuItem<int>(
+                            value: g.id,
+                            child: Text(g.groupName),
+                          );
+                        }).toList(),
+                        onChanged: (val) async {
+                          if (val != null && val != selectedFieldGroupId) {
+                            setStateDialog(() {
+                              selectedFieldGroupId = val;
+                              selectedFieldKeyId = null;
+                              mappedFields = [];
+                              isLoadingFields = true;
+                            });
+                            try {
+                              final fields = await controller.getGroupMappings(val);
+                              setStateDialog(() {
+                                mappedFields = fields;
+                                isLoadingFields = false;
+                              });
+                            } catch (e) {
+                              setStateDialog(() {
+                                isLoadingFields = false;
+                              });
                             }
                           }
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Field Key Dropdown (dynamic)
+                      if (selectedFieldGroupId == null)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.grey.shade50,
+                          ),
+                          child: const Text(
+                            'Please select a Field Group first to view its fields.',
+                            style: TextStyle(color: AppColors.darkGrey, fontSize: 13),
+                          ),
+                        )
+                      else if (isLoadingFields)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (mappedFields.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.grey.shade50,
+                          ),
+                          child: const Text(
+                            'No fields are mapped to the selected group.',
+                            style: TextStyle(color: AppColors.error, fontSize: 13),
+                          ),
+                        )
+                      else
+                        DropdownButtonFormField<int>(
+                          value: selectedFieldKeyId,
+                          decoration: InputDecoration(
+                            labelText: 'Field Key',
+                            prefixIcon: const Icon(Icons.key_outlined),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          validator: (value) => value == null ? 'Required' : null,
+                          items: mappedFields.map((f) {
+                            return DropdownMenuItem<int>(
+                              value: f.fieldId,
+                              child: Text(f.fieldName),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setStateDialog(() {
+                                selectedFieldKeyId = val;
+                                // Auto-fill Label based on the field name
+                                final selectedMapping = mappedFields.firstWhere((f) => f.fieldId == val);
+                                labelController.text = selectedMapping.fieldName
+                                    .replaceAll('_', ' ')
+                                    .split(' ')
+                                    .map((word) => word.isEmpty ? '' : '${word[0].toUpperCase()}${word.substring(1)}')
+                                    .join(' ');
+                              });
+                            }
+                          },
                         ),
-                        child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
+                      const SizedBox(height: 16),
+
+                      // Label Field
+                      TextFormField(
+                        controller: labelController,
+                        decoration: InputDecoration(
+                          labelText: 'Label (e.g. Discharge Summary)',
+                          prefixIcon: const Icon(Icons.label_outline),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Data Type Dropdown
+                      DropdownButtonFormField<String>(
+                        value: selectedDataType,
+                        decoration: InputDecoration(
+                          labelText: 'Data Type',
+                          prefixIcon: const Icon(Icons.data_object_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'string', child: Text('Single File (string)')),
+                          DropdownMenuItem(value: 'array', child: Text('Multiple Files (array)')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setStateDialog(() {
+                              selectedDataType = val;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Sort Order & Mandatory Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: sortOrderController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Sort Order',
+                                prefixIcon: const Icon(Icons.sort_outlined),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) return 'Required';
+                                if (int.tryParse(value) == null) return 'Must be numeric';
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Mandatory',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey),
+                              ),
+                              Switch(
+                                value: isMandatory,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isMandatory = val;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Notes Field
+                      TextFormField(
+                        controller: notesController,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          labelText: 'Guideline Notes (Optional)',
+                          prefixIcon: const Icon(Icons.info_outline),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Get.back(),
+                            child: const Text('Cancel', style: TextStyle(color: AppColors.darkGrey)),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () async {
+                              if (formKey.currentState!.validate()) {
+                                // Find selected group's group name for local state compatibility
+                                final groupName = controller.textFieldGroups
+                                    .firstWhere((g) => g.id == selectedFieldGroupId)
+                                    .groupName;
+                                
+                                // Find selected field's field name for local state compatibility
+                                final fieldName = mappedFields
+                                    .firstWhere((f) => f.fieldId == selectedFieldKeyId)
+                                    .fieldName;
+
+                                final updatedDoc = PackageDocument(
+                                  id: doc.id,
+                                  packageId: doc.packageId,
+                                  fieldKeyId: selectedFieldKeyId,
+                                  fieldKey: fieldName,
+                                  label: labelController.text.trim(),
+                                  fieldGroupId: selectedFieldGroupId,
+                                  fieldGroup: groupName,
+                                  dataType: selectedDataType,
+                                  mandatory: isMandatory,
+                                  sortOrder: int.parse(sortOrderController.text),
+                                  notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
+                                );
+                                if (doc.id != null) {
+                                  final success = await controller.updatePackageDocument(
+                                    widget.package.code,
+                                    doc.id!,
+                                    updatedDoc,
+                                  );
+                                  if (success) {
+                                    Get.back(); // Pop the dialog on success
+                                  }
+                                }
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),

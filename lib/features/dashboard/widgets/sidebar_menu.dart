@@ -28,18 +28,22 @@ class SidebarMenu extends StatelessWidget {
                 const Text('Menu', style: AppTextStyles.labelSmall),
                 const SizedBox(height: 8),
 
-                Obx(() => _buildNavItem(
-                      Icons.dashboard_rounded,
-                      'Dashboard',
-                      isActive: controller.selectedIndex.value == 0,
-                      onTap: () => controller.changeIndex(0),
-                    )),
-                Obx(() => _buildNavItem(
-                      Icons.people_alt_rounded,
-                      'Patients',
-                      isActive: controller.selectedIndex.value == 1,
-                      onTap: () => controller.changeIndex(1),
-                    )),
+                Obx(
+                  () => _buildNavItem(
+                    Icons.dashboard_rounded,
+                    'Dashboard',
+                    isActive: controller.selectedIndex.value == 0,
+                    onTap: () => controller.changeIndex(0),
+                  ),
+                ),
+                Obx(
+                  () => _buildNavItem(
+                    Icons.people_alt_rounded,
+                    'Patients',
+                    isActive: controller.selectedIndex.value == 1,
+                    onTap: () => controller.changeIndex(1),
+                  ),
+                ),
               ],
             ),
           ),

@@ -4,6 +4,7 @@ import '../../core/services/storage_service.dart';
 import '../../core/utils/logger.dart';
 import 'user_model.dart';
 import 'package:claim_automate_checker/features/admin/package_model.dart';
+import 'text_field_group_model.dart';
 
 abstract class IAdminRepository {
   Future<List<AdminUser>> getUsers();
@@ -24,6 +25,45 @@ abstract class IAdminRepository {
     PackageDocument doc,
   );
   Future<bool> deletePackageDocument(String code, int docId);
+
+  // Text Field Group Management
+  Future<List<TextFieldGroupResponse>> getTextFieldGroups();
+  Future<TextFieldGroupDetailResponse?> getTextFieldGroupDetail(int groupId);
+  Future<TextFieldGroupResponse?> createTextFieldGroup(
+    String name,
+    String? description,
+    bool isActive,
+  );
+  Future<TextFieldGroupResponse?> updateTextFieldGroup(
+    int groupId,
+    String? name,
+    String? description,
+    bool? isActive,
+  );
+  Future<bool> deleteTextFieldGroup(int groupId);
+
+  // Text Field Management
+  Future<List<TextFieldResponse>> getTextFields();
+  Future<TextFieldResponse?> createTextField(
+    String name,
+    String? description,
+    bool isActive,
+  );
+  Future<TextFieldResponse?> updateTextField(
+    int fieldId,
+    String? name,
+    String? description,
+    bool? isActive,
+  );
+  Future<bool> deleteTextField(int fieldId);
+
+  // Mappings
+  Future<List<TextFieldGroupMappingResponse>> getGroupMappings(int groupId);
+  Future<List<TextFieldGroupMappingResponse>> addFieldsToGroup(
+    int groupId,
+    List<int> fieldIds,
+  );
+  Future<bool> removeFieldFromGroup(int groupId, int mappingId);
 }
 
 class AdminRepository implements IAdminRepository {
@@ -36,6 +76,7 @@ class AdminRepository implements IAdminRepository {
   );
 
   Options _getOptions() {
+    _dio.options.baseUrl = AppConfig.baseUrl;
     final token = StorageService.getToken();
     return Options(headers: {'Authorization': 'Bearer $token'});
   }
@@ -194,9 +235,18 @@ class AdminRepository implements IAdminRepository {
     PackageDocument doc,
   ) async {
     try {
+      final payload = {
+        'field_key_id': doc.fieldKeyId,
+        'label': doc.label,
+        'field_group_id': doc.fieldGroupId,
+        'data_type': doc.dataType,
+        'mandatory': doc.mandatory,
+        'sort_order': doc.sortOrder,
+        'notes': doc.notes,
+      };
       final response = await _dio.post(
         '/api/v1/admin/packages/$code/documents',
-        data: doc.toJson(),
+        data: payload,
         options: _getOptions(),
       );
 
@@ -217,9 +267,18 @@ class AdminRepository implements IAdminRepository {
     PackageDocument doc,
   ) async {
     try {
+      final payload = {
+        'field_key_id': doc.fieldKeyId,
+        'label': doc.label,
+        'field_group_id': doc.fieldGroupId,
+        'data_type': doc.dataType,
+        'mandatory': doc.mandatory,
+        'sort_order': doc.sortOrder,
+        'notes': doc.notes,
+      };
       final response = await _dio.put(
         '/api/v1/admin/packages/$code/documents/$docId',
-        data: doc.toJson(),
+        data: payload,
         options: _getOptions(),
       );
 
@@ -244,6 +303,261 @@ class AdminRepository implements IAdminRepository {
       return response.statusCode == 200;
     } catch (e) {
       AppLogger.printData("deletePackageDocument error", e.toString());
+      return false;
+    }
+  }
+
+  // Text Field Group Management
+  @override
+  Future<List<TextFieldGroupResponse>> getTextFieldGroups() async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/admin/text-field-groups',
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200) {
+        final List data = response.data;
+        return data
+            .map((json) => TextFieldGroupResponse.fromJson(json))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.printData("getTextFieldGroups error", e.toString());
+      return [];
+    }
+  }
+
+  @override
+  Future<TextFieldGroupDetailResponse?> getTextFieldGroupDetail(
+    int groupId,
+  ) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/admin/text-field-groups/$groupId',
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200) {
+        return TextFieldGroupDetailResponse.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.printData("getTextFieldGroupDetail error", e.toString());
+      return null;
+    }
+  }
+
+  @override
+  Future<TextFieldGroupResponse?> createTextFieldGroup(
+    String name,
+    String? description,
+    bool isActive,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/admin/text-field-groups',
+        data: {
+          'group_name': name,
+          'description': description,
+          'is_active': isActive,
+        },
+        options: _getOptions(),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return TextFieldGroupResponse.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.printData("createTextFieldGroup error", e.toString());
+      return null;
+    }
+  }
+
+  @override
+  Future<TextFieldGroupResponse?> updateTextFieldGroup(
+    int groupId,
+    String? name,
+    String? description,
+    bool? isActive,
+  ) async {
+    try {
+      final response = await _dio.put(
+        '/api/v1/admin/text-field-groups/$groupId',
+        data: {
+          'group_name': ?name,
+          'description': ?description,
+          'is_active': ?isActive,
+        },
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200) {
+        return TextFieldGroupResponse.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.printData("updateTextFieldGroup error", e.toString());
+      return null;
+    }
+  }
+
+  @override
+  Future<bool> deleteTextFieldGroup(int groupId) async {
+    try {
+      final response = await _dio.delete(
+        '/api/v1/admin/text-field-groups/$groupId',
+        options: _getOptions(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      AppLogger.printData("deleteTextFieldGroup error", e.toString());
+      return false;
+    }
+  }
+
+  // Text Field Management
+  @override
+  Future<List<TextFieldResponse>> getTextFields() async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/admin/text-fields',
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200) {
+        final List data = response.data;
+        return data.map((json) => TextFieldResponse.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.printData("getTextFields error", e.toString());
+      return [];
+    }
+  }
+
+  @override
+  Future<TextFieldResponse?> createTextField(
+    String name,
+    String? description,
+    bool isActive,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/admin/text-fields',
+        data: {
+          'field_name': name,
+          'description': description,
+          'is_active': isActive,
+        },
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return TextFieldResponse.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.printData("createTextField error", e.toString());
+      return null;
+    }
+  }
+
+  @override
+  Future<TextFieldResponse?> updateTextField(
+    int fieldId,
+    String? name,
+    String? description,
+    bool? isActive,
+  ) async {
+    try {
+      final response = await _dio.put(
+        '/api/v1/admin/text-fields/$fieldId',
+        data: {
+          'field_name': ?name,
+          'description': ?description,
+          'is_active': ?isActive,
+        },
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200) {
+        return TextFieldResponse.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.printData("updateTextField error", e.toString());
+      return null;
+    }
+  }
+
+  @override
+  Future<bool> deleteTextField(int fieldId) async {
+    try {
+      final response = await _dio.delete(
+        '/api/v1/admin/text-fields/$fieldId',
+        options: _getOptions(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      AppLogger.printData("deleteTextField error", e.toString());
+      return false;
+    }
+  }
+
+  // Mappings
+  @override
+  Future<List<TextFieldGroupMappingResponse>> getGroupMappings(
+    int groupId,
+  ) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/admin/text-field-groups/$groupId/mappings',
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200) {
+        final List data = response.data;
+        return data
+            .map((json) => TextFieldGroupMappingResponse.fromJson(json))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.printData("getGroupMappings error", e.toString());
+      return [];
+    }
+  }
+
+  @override
+  Future<List<TextFieldGroupMappingResponse>> addFieldsToGroup(
+    int groupId,
+    List<int> fieldIds,
+  ) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/admin/text-field-groups/$groupId/mappings',
+        data: {'field_ids': fieldIds},
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final List data = response.data;
+        return data
+            .map((json) => TextFieldGroupMappingResponse.fromJson(json))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.printData("addFieldsToGroup error", e.toString());
+      return [];
+    }
+  }
+
+  @override
+  Future<bool> removeFieldFromGroup(int groupId, int mappingId) async {
+    try {
+      final response = await _dio.delete(
+        '/api/v1/admin/text-field-groups/$groupId/mappings/$mappingId',
+        options: _getOptions(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      AppLogger.printData("removeFieldFromGroup error", e.toString());
       return false;
     }
   }

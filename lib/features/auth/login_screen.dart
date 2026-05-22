@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../core/config/app_config.dart';
+import '../../core/services/storage_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/validators.dart';
@@ -105,16 +107,19 @@ class _LoginScreenState extends State<LoginScreen>
         bottom: false,
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.verified_user_rounded,
-                color: AppColors.secondaryLight,
-                size: 28,
+            GestureDetector(
+              onDoubleTap: _showChangeBaseUrlDialog,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.verified_user_rounded,
+                  color: AppColors.secondaryLight,
+                  size: 28,
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -220,7 +225,10 @@ class _LoginScreenState extends State<LoginScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SecurityIllustration(size: 240),
+          GestureDetector(
+            onDoubleTap: _showChangeBaseUrlDialog,
+            child: const SecurityIllustration(size: 240),
+          ),
           const SizedBox(height: 32),
           const Text(
             'Secure Claim Verification',
@@ -480,6 +488,109 @@ class _LoginScreenState extends State<LoginScreen>
         '© 2026 Claim Automate Checker. All Rights Reserved.',
         style: TextStyle(color: AppColors.white.withOpacity(0.7), fontSize: 11),
         textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  void _showChangeBaseUrlDialog() {
+    final urlController = TextEditingController(text: AppConfig.baseUrl);
+    final formKey = GlobalKey<FormState>();
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryAccent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.link_rounded, color: AppColors.primaryAccent),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Change Base URL',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24, thickness: 1),
+                const SizedBox(height: 8),
+                const Text(
+                  'Enter the backend API server base URL:',
+                  style: TextStyle(fontSize: 13, color: AppColors.darkGrey),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: urlController,
+                  decoration: InputDecoration(
+                    labelText: 'Base URL',
+                    hintText: 'https://example.com',
+                    prefixIcon: const Icon(Icons.dns_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Required';
+                    }
+                    final uri = Uri.tryParse(value.trim());
+                    if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+                      return 'Invalid URL format';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Get.back(),
+                      child: const Text('Cancel', style: TextStyle(color: AppColors.darkGrey)),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (formKey.currentState!.validate()) {
+                          final newUrl = urlController.text.trim();
+                          await StorageService.saveBaseUrl(newUrl);
+                          Get.back();
+                          Get.snackbar(
+                            'Success',
+                            'Base URL updated to $newUrl',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: AppColors.success,
+                            colorText: Colors.white,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text('Save', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

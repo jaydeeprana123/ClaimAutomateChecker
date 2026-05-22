@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'admin_repository.dart';
 import 'user_model.dart';
+import 'text_field_group_model.dart';
 import '../../core/theme/app_colors.dart';
 
 import 'package:claim_automate_checker/features/admin/package_model.dart';
@@ -16,6 +17,13 @@ class AdminController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxInt selectedIndex = 0.obs;
 
+  // Text Field Group observables
+  final RxList<TextFieldGroupResponse> textFieldGroups = <TextFieldGroupResponse>[].obs;
+  final RxList<TextFieldResponse> textFields = <TextFieldResponse>[].obs;
+  final RxMap<int, TextFieldGroupDetailResponse> groupDetails = <int, TextFieldGroupDetailResponse>{}.obs;
+  final RxBool isLoadingGroups = false.obs;
+  final RxBool isLoadingFields = false.obs;
+
   @override
   void onInit() {
     super.onInit();
@@ -27,6 +35,10 @@ class AdminController extends GetxController {
     selectedIndex.value = index;
     if (index == 1 && users.isEmpty) fetchUsers();
     if (index == 2 && packages.isEmpty) fetchPackages();
+    if (index == 3) {
+      if (textFieldGroups.isEmpty) fetchTextFieldGroups();
+      if (textFields.isEmpty) fetchTextFields();
+    }
   }
 
   Future<void> fetchUsers() async {
@@ -262,5 +274,293 @@ class AdminController extends GetxController {
     } finally {
       isLoadingDocuments.value = false;
     }
+  }
+
+  // --- Text Field Group Management ---
+
+  Future<void> fetchTextFieldGroups() async {
+    isLoadingGroups.value = true;
+    try {
+      final data = await repository.getTextFieldGroups();
+      textFieldGroups.assignAll(data);
+    } finally {
+      isLoadingGroups.value = false;
+    }
+  }
+
+  Future<void> fetchTextFieldGroupDetail(int groupId) async {
+    try {
+      final detail = await repository.getTextFieldGroupDetail(groupId);
+      if (detail != null) {
+        groupDetails[groupId] = detail;
+      }
+    } catch (e) {
+      debugPrint("fetchTextFieldGroupDetail error: $e");
+    }
+  }
+
+  Future<bool> createTextFieldGroup(String name, String? description, bool isActive) async {
+    isLoadingGroups.value = true;
+    try {
+      final result = await repository.createTextFieldGroup(name, description, isActive);
+      if (result != null) {
+        await fetchTextFieldGroups();
+        Get.back(); // Close dialog first to avoid GetX snackbar popping issues
+        Get.snackbar(
+          'Success',
+          'Text field group created successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to create text field group',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingGroups.value = false;
+    }
+  }
+
+  Future<bool> updateTextFieldGroup(int groupId, String? name, String? description, bool? isActive, {bool closeDialog = false}) async {
+    isLoadingGroups.value = true;
+    try {
+      final result = await repository.updateTextFieldGroup(groupId, name, description, isActive);
+      if (result != null) {
+        await fetchTextFieldGroups();
+        // If the group details were already fetched, refresh them
+        if (groupDetails.containsKey(groupId)) {
+          await fetchTextFieldGroupDetail(groupId);
+        }
+        if (closeDialog) {
+          Get.back(); // Close dialog first to avoid GetX snackbar popping issues
+        }
+        Get.snackbar(
+          'Success',
+          'Text field group updated successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to update text field group',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingGroups.value = false;
+    }
+  }
+
+  Future<bool> deleteTextFieldGroup(int groupId) async {
+    isLoadingGroups.value = true;
+    try {
+      final success = await repository.deleteTextFieldGroup(groupId);
+      if (success) {
+        textFieldGroups.removeWhere((g) => g.id == groupId);
+        groupDetails.remove(groupId);
+        Get.back(); // Close confirmation dialog first to avoid GetX snackbar popping issues
+        Get.snackbar(
+          'Success',
+          'Text field group deleted successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to delete text field group',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingGroups.value = false;
+    }
+  }
+
+  // --- Text Field Management ---
+
+  Future<void> fetchTextFields() async {
+    isLoadingFields.value = true;
+    try {
+      final data = await repository.getTextFields();
+      textFields.assignAll(data);
+    } finally {
+      isLoadingFields.value = false;
+    }
+  }
+
+  Future<bool> createTextField(String name, String? description, bool isActive) async {
+    isLoadingFields.value = true;
+    try {
+      final result = await repository.createTextField(name, description, isActive);
+      if (result != null) {
+        await fetchTextFields();
+        Get.back(); // Close dialog first to avoid GetX snackbar popping issues
+        Get.snackbar(
+          'Success',
+          'Text field created successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to create text field',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingFields.value = false;
+    }
+  }
+
+  Future<bool> updateTextField(int fieldId, String? name, String? description, bool? isActive, {bool closeDialog = false}) async {
+    isLoadingFields.value = true;
+    try {
+      final result = await repository.updateTextField(fieldId, name, description, isActive);
+      if (result != null) {
+        await fetchTextFields();
+        if (closeDialog) {
+          Get.back(); // Close dialog first to avoid GetX snackbar popping issues
+        }
+        Get.snackbar(
+          'Success',
+          'Text field updated successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to update text field',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingFields.value = false;
+    }
+  }
+
+  Future<bool> deleteTextField(int fieldId) async {
+    isLoadingFields.value = true;
+    try {
+      final success = await repository.deleteTextField(fieldId);
+      if (success) {
+        textFields.removeWhere((f) => f.id == fieldId);
+        Get.back(); // Close confirmation dialog first to avoid GetX snackbar popping issues
+        Get.snackbar(
+          'Success',
+          'Text field deleted successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to delete text field',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingFields.value = false;
+    }
+  }
+
+  // --- Group Mappings ---
+
+  Future<bool> addFieldsToGroup(int groupId, List<int> fieldIds) async {
+    isLoadingGroups.value = true;
+    try {
+      final result = await repository.addFieldsToGroup(groupId, fieldIds);
+      if (result.isNotEmpty) {
+        await fetchTextFieldGroupDetail(groupId);
+        Get.snackbar(
+          'Success',
+          'Mapped fields to group successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to map fields to group',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingGroups.value = false;
+    }
+  }
+
+  Future<bool> removeFieldFromGroup(int groupId, int mappingId) async {
+    isLoadingGroups.value = true;
+    try {
+      final success = await repository.removeFieldFromGroup(groupId, mappingId);
+      if (success) {
+        await fetchTextFieldGroupDetail(groupId);
+        Get.snackbar(
+          'Success',
+          'Removed field mapping successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to remove field mapping',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingGroups.value = false;
+    }
+  }
+
+  Future<List<TextFieldGroupMappingResponse>> getGroupMappings(int groupId) async {
+    return await repository.getGroupMappings(groupId);
   }
 }

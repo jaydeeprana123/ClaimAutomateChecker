@@ -43,7 +43,18 @@ class PatientRepository implements IPatientRepository {
     ),
   );
 
+  final Dio _dioForGetClaimReport = Dio(
+    BaseOptions(
+      baseUrl: AppConfig.baseUrl,
+      connectTimeout: const Duration(minutes: 10),
+      receiveTimeout: const Duration(minutes: 10),
+    ),
+  );
+
   Options _getOptions() {
+    final baseUrl = AppConfig.baseUrl;
+    _dio.options.baseUrl = baseUrl;
+    _dioForGetClaimReport.options.baseUrl = baseUrl;
     final token = StorageService.getToken();
     return Options(headers: {'Authorization': 'Bearer $token'});
   }
@@ -284,7 +295,7 @@ class PatientRepository implements IPatientRepository {
   @override
   Future<Map<String, dynamic>?> scoreClaim(int claimId) async {
     try {
-      final response = await _dio.post(
+      final response = await _dioForGetClaimReport.post(
         '/api/v1/claims/$claimId/score',
         options: _getOptions(),
       );
@@ -310,7 +321,10 @@ class PatientRepository implements IPatientRepository {
         options: _getOptions(),
       );
 
-      AppLogger.printData("preflightCheck status", response.statusCode.toString());
+      AppLogger.printData(
+        "preflightCheck status",
+        response.statusCode.toString(),
+      );
 
       if (response.statusCode == 200) {
         AppLogger.printData("preflightCheck data", response.data.toString());
@@ -331,7 +345,10 @@ class PatientRepository implements IPatientRepository {
         options: _getOptions(),
       );
 
-      AppLogger.printData("getClaimReport status", response.statusCode.toString());
+      AppLogger.printData(
+        "getClaimReport status",
+        response.statusCode.toString(),
+      );
 
       if (response.statusCode == 200) {
         AppLogger.printData("getClaimReport data", response.data.toString());
@@ -352,7 +369,10 @@ class PatientRepository implements IPatientRepository {
         options: _getOptions(),
       );
 
-      AppLogger.printData("getPatientClaims status", response.statusCode.toString());
+      AppLogger.printData(
+        "getPatientClaims status",
+        response.statusCode.toString(),
+      );
 
       if (response.statusCode == 200) {
         AppLogger.printData("getPatientClaims data", response.data.toString());

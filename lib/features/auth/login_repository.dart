@@ -18,6 +18,7 @@ class LoginRepository implements ILoginRepository {
 
   @override
   Future<bool> login(String username, String password) async {
+    _dio.options.baseUrl = AppConfig.baseUrl;
     AppLogger.printData("username", username);
     AppLogger.printData("password", password);
     try {

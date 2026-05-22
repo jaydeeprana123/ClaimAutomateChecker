@@ -5,6 +5,7 @@ import 'admin_repository.dart';
 import 'screens/admin_home_view.dart';
 import 'screens/user_list_view.dart';
 import 'screens/package_list_view.dart';
+import 'screens/text_field_groups_list_view.dart';
 import 'widgets/admin_sidebar.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/login_screen.dart';
@@ -22,12 +23,14 @@ class AdminShellScreen extends StatelessWidget {
       const AdminHomeView(),
       const UserListView(),
       const PackageListView(),
+      const TextFieldGroupsListView(),
     ];
 
     final List<String> titles = [
       'Dashboard',
       'Users',
       'Packages',
+      'Text Field Groups',
     ];
 
     return Scaffold(
@@ -35,18 +38,31 @@ class AdminShellScreen extends StatelessWidget {
       appBar: isDesktop
           ? null
           : AppBar(
-              title: Obx(() => Text(
-                    titles[controller.selectedIndex.value],
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  )),
+              title: Obx(
+                () => Text(
+                  titles[controller.selectedIndex.value],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
               flexibleSpace: Container(
-                decoration: const BoxDecoration(gradient: AppColors.headerGradient),
+                decoration: const BoxDecoration(
+                  gradient: AppColors.headerGradient,
+                ),
               ),
               actions: [
                 IconButton(
                   onPressed: () {
-                    if (controller.selectedIndex.value == 1) controller.fetchUsers();
-                    if (controller.selectedIndex.value == 2) controller.fetchPackages();
+                    if (controller.selectedIndex.value == 1)
+                      controller.fetchUsers();
+                    if (controller.selectedIndex.value == 2)
+                      controller.fetchPackages();
+                    if (controller.selectedIndex.value == 3) {
+                      controller.fetchTextFieldGroups();
+                      controller.fetchTextFields();
+                    }
                   },
                   icon: const Icon(Icons.refresh, color: Colors.white),
                 ),
@@ -83,19 +99,26 @@ class AdminShellScreen extends StatelessWidget {
       color: Colors.white,
       child: Row(
         children: [
-          Obx(() => Text(
-                titles[controller.selectedIndex.value],
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryDark,
-                ),
-              )),
+          Obx(
+            () => Text(
+              titles[controller.selectedIndex.value],
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryDark,
+              ),
+            ),
+          ),
           const Spacer(),
           IconButton(
             onPressed: () {
               if (controller.selectedIndex.value == 1) controller.fetchUsers();
-              if (controller.selectedIndex.value == 2) controller.fetchPackages();
+              if (controller.selectedIndex.value == 2)
+                controller.fetchPackages();
+              if (controller.selectedIndex.value == 3) {
+                controller.fetchTextFieldGroups();
+                controller.fetchTextFields();
+              }
             },
             icon: const Icon(Icons.refresh, color: AppColors.primary),
           ),
@@ -113,8 +136,14 @@ class AdminShellScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Admin User', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            Text('System Administrator', style: TextStyle(fontSize: 12, color: AppColors.darkGrey)),
+            Text(
+              'Admin User',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            Text(
+              'System Administrator',
+              style: TextStyle(fontSize: 12, color: AppColors.darkGrey),
+            ),
           ],
         ),
         const SizedBox(width: 12),
@@ -122,9 +151,9 @@ class AdminShellScreen extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
           ),
           child: const Icon(Icons.person, color: AppColors.primary),
         ),
