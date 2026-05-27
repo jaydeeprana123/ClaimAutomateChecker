@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'dart:convert';
 import '../../core/config/app_config.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/api_client.dart';
 import '../../core/utils/logger.dart';
 import '../admin/package_model.dart';
 import 'patient_model.dart';
@@ -35,20 +36,11 @@ abstract class IPatientRepository {
 }
 
 class PatientRepository implements IPatientRepository {
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ),
-  );
+  final Dio _dio = ApiClient.createDio();
 
-  final Dio _dioForGetClaimReport = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.baseUrl,
-      connectTimeout: const Duration(minutes: 10),
-      receiveTimeout: const Duration(minutes: 10),
-    ),
+  final Dio _dioForGetClaimReport = ApiClient.createDio(
+    connectTimeout: const Duration(minutes: 10),
+    receiveTimeout: const Duration(minutes: 10),
   );
 
   Options _getOptions() {
@@ -265,6 +257,8 @@ class PatientRepository implements IPatientRepository {
     required String dischargeDate,
     required List<Map<String, dynamic>> documents,
   }) async {
+    AppLogger.printData("submitClaim documents", documents.toString());
+
     try {
       final response = await _dio.post(
         '/api/v1/claims/',
@@ -340,7 +334,7 @@ class PatientRepository implements IPatientRepository {
   @override
   Future<Map<String, dynamic>?> getClaimReport(int claimId) async {
     try {
-      final response = await _dio.get(
+      final response = await _dioForGetClaimReport.get(
         '/api/v1/claims/$claimId/report',
         options: _getOptions(),
       );

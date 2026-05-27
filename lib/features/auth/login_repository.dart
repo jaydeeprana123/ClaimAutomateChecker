@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../core/config/app_config.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/api_client.dart';
 import '../../core/utils/logger.dart';
 
 abstract class ILoginRepository {
@@ -8,13 +9,7 @@ abstract class ILoginRepository {
 }
 
 class LoginRepository implements ILoginRepository {
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ),
-  );
+  final Dio _dio = ApiClient.createDio();
 
   @override
   Future<bool> login(String username, String password) async {

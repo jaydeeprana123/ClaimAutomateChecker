@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../core/config/app_config.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/api_client.dart';
 import '../../core/utils/logger.dart';
 import 'user_model.dart';
 import 'package:claim_automate_checker/features/admin/package_model.dart';
@@ -67,13 +68,7 @@ abstract class IAdminRepository {
 }
 
 class AdminRepository implements IAdminRepository {
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ),
-  );
+  final Dio _dio = ApiClient.createDio();
 
   Options _getOptions() {
     _dio.options.baseUrl = AppConfig.baseUrl;

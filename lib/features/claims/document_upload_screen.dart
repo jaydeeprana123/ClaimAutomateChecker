@@ -49,7 +49,7 @@ class DocumentItem {
     if (fieldGroup == 'text' || fieldGroup == 'ot_notes') {
       return textController.text.trim().isNotEmpty;
     }
-    return files.isNotEmpty;
+    return files.isNotEmpty || textController.text.trim().isNotEmpty;
   }
 
   void dispose() {
@@ -356,54 +356,159 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   void _submitFinalClaim() {
     if (_isSubmitting) return;
 
+    final List<String> missingFields = [];
     for (int i = 0; i < _stepKeys.length; i++) {
       final key = _stepKeys[i];
       final docs = _stepDocuments[key] ?? [];
       final incomplete = docs
           .where((d) => d.isMandatory && !d.isUploaded)
           .toList();
-      if (incomplete.isNotEmpty) {
-        setState(() {
-          _currentStepIndex = i;
-        });
-        final missing = incomplete.map((d) => d.type).join(', ');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Pending in ${_formatStepTitle(key)}: $missing'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
+      for (var d in incomplete) {
+        missingFields.add('${_formatStepTitle(key)}: ${d.type}');
       }
     }
 
-    _showClaimDetailsDialog();
+    if (missingFields.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.warning,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Missing Mandatory Fields',
+                  style: AppTextStyles.heading2,
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'The following compulsory fields/documents have not been provided:',
+                    style: TextStyle(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 180),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: missingFields.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '• ',
+                                style: TextStyle(
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  missingFields[index],
+                                  style: const TextStyle(
+                                    color: AppColors.darkGrey,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.error.withOpacity(0.2),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.info_outline,
+                          color: AppColors.error,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Warning: Submitting without these mandatory details may cause the claim validator to FAIL/Reject this claim.',
+                            style: TextStyle(
+                              color: AppColors.error.withOpacity(0.9),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'Go Back',
+                  style: TextStyle(color: AppColors.darkGrey),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _showClaimDetailsDialog();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Submit Anyway'),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      _showClaimDetailsDialog();
+    }
   }
 
   void _handleNextOrSubmit() {
     if (_currentStepIndex < _stepKeys.length - 1) {
-      // Validate current step
-      final currentKey = _stepKeys[_currentStepIndex];
-      final docs = _stepDocuments[currentKey] ?? [];
-      final incompleteDocs = docs
-          .where((d) => d.isMandatory && !d.isUploaded)
-          .toList();
-
-      if (incompleteDocs.isNotEmpty) {
-        final missingNames = incompleteDocs.map((d) => d.type).join(', ');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Please fill mandatory fields in ${_formatStepTitle(currentKey)}: $missingNames',
-            ),
-            backgroundColor: AppColors.warning,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
-      }
-
       setState(() {
         _currentStepIndex++;
       });
@@ -882,7 +987,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     if (_stepKeys.length <= 1) return const SizedBox.shrink();
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -931,95 +1036,99 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             final isCompleted = _isStepCompleted(key);
             final title = _formatStepTitle(key);
 
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Tooltip(
-                  message: title,
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _currentStepIndex = stepIndex;
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: isCurrent
-                            ? AppColors.primary
-                            : (isCompleted
-                                  ? AppColors.success
-                                  : AppColors.background),
-                        shape: BoxShape.circle,
-                        border: Border.all(
+            return SizedBox(
+              width: 80,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Tooltip(
+                    message: title,
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _currentStepIndex = stepIndex;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
                           color: isCurrent
-                              ? AppColors.primaryDark
+                              ? AppColors.primary
                               : (isCompleted
                                     ? AppColors.success
-                                    : AppColors.grey),
-                          width: 2,
+                                    : AppColors.background),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isCurrent
+                                ? AppColors.primaryDark
+                                : (isCompleted
+                                      ? AppColors.success
+                                      : AppColors.grey),
+                            width: 2,
+                          ),
+                          boxShadow: isCurrent
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primary.withOpacity(0.4),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
+                                  ),
+                                ]
+                              : null,
                         ),
-                        boxShadow: isCurrent
-                            ? [
-                                BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.4),
-                                  blurRadius: 8,
-                                  spreadRadius: 2,
+                        child: Center(
+                          child: isCompleted
+                              ? const Icon(
+                                  Icons.check,
+                                  size: 18,
+                                  color: Colors.white,
+                                )
+                              : Text(
+                                  '${stepIndex + 1}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isCurrent
+                                        ? Colors.white
+                                        : AppColors.darkGrey,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                              ]
-                            : null,
-                      ),
-                      child: Center(
-                        child: isCompleted
-                            ? const Icon(
-                                Icons.check,
-                                size: 18,
-                                color: Colors.white,
-                              )
-                            : Text(
-                                '${stepIndex + 1}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: isCurrent
-                                      ? Colors.white
-                                      : AppColors.darkGrey,
-                                  fontSize: 14,
-                                ),
-                              ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: 36,
-                  height: 16,
-                  child: OverflowBox(
-                    minWidth: 0,
-                    maxWidth: 120,
-                    minHeight: 0,
-                    maxHeight: 16,
-                    child: Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                        color: isCurrent
-                            ? AppColors.primary
-                            : (isCompleted
-                                  ? AppColors.success
-                                  : AppColors.darkGrey),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: 80,
+                    height: 16,
+                    child: OverflowBox(
+                      minWidth: 0,
+                      maxWidth: 120,
+                      minHeight: 0,
+                      maxHeight: 16,
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                          color: isCurrent
+                              ? AppColors.primary
+                              : (isCompleted
+                                    ? AppColors.success
+                                    : AppColors.darkGrey),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.visible,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           }
         }),

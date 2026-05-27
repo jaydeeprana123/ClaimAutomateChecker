@@ -69,6 +69,20 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
     }
   }
 
+  int _parseScore(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.round();
+    if (value is num) return value.round();
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      if (parsed != null) {
+        return parsed.round();
+      }
+    }
+    return 0;
+  }
+
   Future<void> _fetchClaimScore() async {
     try {
       final patientRepository = PatientRepository();
@@ -79,12 +93,17 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
         report = await patientRepository.getClaimReport(widget.claimId!);
       } catch (e) {
         // If GET /report fails (e.g., claim not yet scored), proceed to scoring flow
-        AppLogger.printData("getClaimReport error/not found, proceeding to score", e.toString());
+        AppLogger.printData(
+          "getClaimReport error/not found, proceeding to score",
+          e.toString(),
+        );
       }
 
       if (report == null) {
         // Step 2: Call Preflight Check
-        final preflight = await patientRepository.preflightCheck(widget.claimId!);
+        final preflight = await patientRepository.preflightCheck(
+          widget.claimId!,
+        );
         if (preflight == null) {
           throw Exception('Failed to load preflight check from server.');
         }
@@ -123,7 +142,7 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
         if (report == null) {
           throw Exception('Failed to load score report from server.');
         }
-      }
+      } else {}
 
       if (!mounted) return;
 
@@ -135,11 +154,11 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
         _scores = modules.map((m) {
           return {
             'module': m['module'] ?? 'Unknown',
-            'score': (m['raw_score'] ?? 0.0).round(),
+            'score': _parseScore(m['raw_score']),
           };
         }).toList();
 
-        _calculatedScore = (report['total_score'] ?? 0.0).round();
+        _calculatedScore = _parseScore(report['total_score']);
         _verdict = report['verdict'] ?? 'REVIEW';
 
         if (_verdict == 'PASS') {
@@ -186,9 +205,11 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
     super.dispose();
   }
 
-  Color _getScoreColor(int score) {
-    if (_verdict == 'PASS') return AppColors.success;
-    if (_verdict == 'FAIL') return AppColors.error;
+  Color _getScoreColor(int score, {bool ignoreVerdict = false}) {
+    if (!ignoreVerdict) {
+      if (_verdict == 'PASS') return AppColors.success;
+      if (_verdict == 'FAIL') return AppColors.error;
+    }
     if (score >= 85) return AppColors.success;
     if (score >= 75) return AppColors.primary;
     if (score >= 60) return AppColors.warning;
@@ -224,10 +245,10 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
         child: _isProcessing
             ? _buildProcessingState()
             : (_errorMessage != null
-                ? _buildErrorState()
-                : (_preflightFailed
-                    ? _buildPreflightFailedState()
-                    : _buildResultsState())),
+                  ? _buildErrorState()
+                  : (_preflightFailed
+                        ? _buildPreflightFailedState()
+                        : _buildResultsState())),
       ),
     );
   }
@@ -371,7 +392,8 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
   Widget _buildOverallScoreCard() {
     final score = _overallScore;
     final color = _getScoreColor(score);
-    final verdictLabel = _verdictLabel ??
+    final verdictLabel =
+        _verdictLabel ??
         (score >= 80 ? 'Highly Confident' : 'Requires Manual Review');
 
     return Container(
@@ -525,7 +547,7 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
   }
 
   Widget _buildScoreRow(String title, int score) {
-    final color = _getScoreColor(score);
+    final color = _getScoreColor(score, ignoreVerdict: true);
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Column(
@@ -619,120 +641,158 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
     final List<Widget> warningWidgets = [];
 
     if (_identityMismatches.isNotEmpty) {
-      warningWidgets.add(Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Identity Mismatches:',
-              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error),
-            ),
-            const SizedBox(height: 6),
-            ..._identityMismatches.map((m) => Row(
+      warningWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Identity Mismatches:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.error,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ..._identityMismatches.map(
+                (m) => Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('• ',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: AppColors.error)),
+                    const Text(
+                      '• ',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.error,
+                      ),
+                    ),
                     Expanded(
-                        child: Text(m,
-                            style: const TextStyle(color: AppColors.dark))),
+                      child: Text(
+                        m,
+                        style: const TextStyle(color: AppColors.dark),
+                      ),
+                    ),
                   ],
-                )),
-          ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ));
+      );
     }
 
     if (_missingDocuments.isNotEmpty) {
-      warningWidgets.add(Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Missing Documents:',
-              style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.warning),
-            ),
-            const SizedBox(height: 6),
-            ..._missingDocuments.map((doc) => Row(
+      warningWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Missing Documents:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.warning,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ..._missingDocuments.map(
+                (doc) => Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('• ',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.warning)),
+                    const Text(
+                      '• ',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.warning,
+                      ),
+                    ),
                     Expanded(
-                        child: Text(doc,
-                            style: const TextStyle(color: AppColors.dark))),
+                      child: Text(
+                        doc,
+                        style: const TextStyle(color: AppColors.dark),
+                      ),
+                    ),
                   ],
-                )),
-          ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ));
+      );
     }
 
     if (_flags.isNotEmpty) {
-      warningWidgets.add(Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Policy & Verification Flags:',
-            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.warning),
-          ),
-          const SizedBox(height: 8),
-          ..._flags.map((flag) {
-            final severity = flag['severity'] ?? 'LOW';
-            final severityColor = severity == 'HIGH'
-                ? AppColors.error
-                : (severity == 'MEDIUM'
-                    ? AppColors.warning
-                    : AppColors.primary);
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: severityColor.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: severityColor.withOpacity(0.2)),
+      warningWidgets.add(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Policy & Verification Flags:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.warning,
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.flag, color: severityColor, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Field: ${flag['field']} ($severity)',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: severityColor,
-                            fontSize: 13,
+            ),
+            const SizedBox(height: 8),
+            ..._flags.map((flag) {
+              final severity = flag['severity'] ?? 'LOW';
+              final severityColor = severity == 'HIGH'
+                  ? AppColors.error
+                  : (severity == 'MEDIUM'
+                        ? AppColors.warning
+                        : AppColors.primary);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: severityColor.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: severityColor.withOpacity(0.2)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.flag, color: severityColor, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Field: ${flag['field']} ($severity)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: severityColor,
+                              fontSize: 13,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(flag['reason'] ?? '',
-                            style: const TextStyle(fontSize: 13)),
-                        if (flag['affected_doc'] != null &&
-                            flag['affected_doc'].toString().isNotEmpty) ...[
                           const SizedBox(height: 2),
-                          Text('Affected Document: ${flag['affected_doc']}',
+                          Text(
+                            flag['reason'] ?? '',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          if (flag['affected_doc'] != null &&
+                              flag['affected_doc'].toString().isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Affected Document: ${flag['affected_doc']}',
                               style: const TextStyle(
-                                  fontSize: 12, color: AppColors.darkGrey)),
-                        ]
-                      ],
+                                fontSize: 12,
+                                color: AppColors.darkGrey,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ));
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      );
     }
 
     if (warningWidgets.isEmpty) return const SizedBox.shrink();
@@ -753,20 +813,27 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
       icon: Icons.lightbulb_outline,
       iconColor: AppColors.success,
       children: _recommendations
-          .map((rec) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.check, color: AppColors.success, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: Text(rec,
-                            style: const TextStyle(
-                                color: AppColors.dark, fontSize: 14))),
-                  ],
-                ),
-              ))
+          .map(
+            (rec) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.check, color: AppColors.success, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      rec,
+                      style: const TextStyle(
+                        color: AppColors.dark,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
           .toList(),
     );
   }
@@ -791,7 +858,11 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.cancel_outlined, color: AppColors.error, size: 40),
+                    const Icon(
+                      Icons.cancel_outlined,
+                      color: AppColors.error,
+                      size: 40,
+                    ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -835,7 +906,9 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
                         offset: Offset(0, 4),
                       ),
                     ],
-                    border: Border.all(color: AppColors.lightGrey.withOpacity(0.5)),
+                    border: Border.all(
+                      color: AppColors.lightGrey.withOpacity(0.5),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -849,19 +922,26 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
                         ),
                       ),
                       const SizedBox(height: 12),
-                      ..._missingMandatory.map((field) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.arrow_right, color: AppColors.error),
-                                const SizedBox(width: 8),
-                                Text(
-                                  field,
-                                  style: const TextStyle(fontWeight: FontWeight.w500),
+                      ..._missingMandatory.map(
+                        (field) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.arrow_right,
+                                color: AppColors.error,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                field,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
                                 ),
-                              ],
-                            ),
-                          )),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -880,14 +960,18 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
                       offset: Offset(0, 4),
                     ),
                   ],
-                  border: Border.all(color: AppColors.lightGrey.withOpacity(0.5)),
+                  border: Border.all(
+                    color: AppColors.lightGrey.withOpacity(0.5),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Detailed Field Status Check',
-                      style: AppTextStyles.heading2.copyWith(color: AppColors.primaryDark),
+                      style: AppTextStyles.heading2.copyWith(
+                        color: AppColors.primaryDark,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Table(
@@ -896,7 +980,8 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
                         1: FixedColumnWidth(90),
                         2: FixedColumnWidth(100),
                       },
-                      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                      defaultVerticalAlignment:
+                          TableCellVerticalAlignment.middle,
                       children: [
                         const TableRow(
                           decoration: BoxDecoration(
@@ -935,27 +1020,60 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
                             statusWidget = const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.check_circle, color: AppColors.success, size: 18),
+                                Icon(
+                                  Icons.check_circle,
+                                  color: AppColors.success,
+                                  size: 18,
+                                ),
                                 SizedBox(width: 4),
-                                Text('OK', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text(
+                                  'OK',
+                                  style: TextStyle(
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ],
                             );
                           } else if (status == 'empty') {
                             statusWidget = const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.warning, color: AppColors.warning, size: 18),
+                                Icon(
+                                  Icons.warning,
+                                  color: AppColors.warning,
+                                  size: 18,
+                                ),
                                 SizedBox(width: 4),
-                                Text('Empty', style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text(
+                                  'Empty',
+                                  style: TextStyle(
+                                    color: AppColors.warning,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ],
                             );
                           } else {
                             statusWidget = const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.cancel, color: AppColors.error, size: 18),
+                                Icon(
+                                  Icons.cancel,
+                                  color: AppColors.error,
+                                  size: 18,
+                                ),
                                 SizedBox(width: 4),
-                                Text('Missing', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text(
+                                  'Missing',
+                                  style: TextStyle(
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ],
                             );
                           }
@@ -963,38 +1081,56 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
                           return TableRow(
                             decoration: const BoxDecoration(
                               border: Border(
-                                bottom: BorderSide(color: AppColors.lightGrey, width: 0.5),
+                                bottom: BorderSide(
+                                  color: AppColors.lightGrey,
+                                  width: 0.5,
+                                ),
                               ),
                             ),
                             children: [
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       field['label'],
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                     Text(
                                       field['field_key'],
-                                      style: const TextStyle(color: AppColors.darkGrey, fontSize: 11),
+                                      style: const TextStyle(
+                                        color: AppColors.darkGrey,
+                                        fontSize: 11,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 child: Text(
                                   field['mandatory'] ? 'Yes' : 'No',
                                   style: TextStyle(
-                                    fontWeight: field['mandatory'] ? FontWeight.bold : FontWeight.normal,
-                                    color: field['mandatory'] ? AppColors.error : AppColors.darkGrey,
+                                    fontWeight: field['mandatory']
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: field['mandatory']
+                                        ? AppColors.error
+                                        : AppColors.darkGrey,
                                   ),
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 child: statusWidget,
                               ),
                             ],
@@ -1013,11 +1149,22 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
                   OutlinedButton(
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
                       side: const BorderSide(color: AppColors.primary),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    child: const Text('Back to Upload', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                    child: const Text(
+                      'Back to Upload',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 16),
                   ElevatedButton(
@@ -1025,13 +1172,21 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
                       Navigator.of(context).popUntil((route) => route.isFirst);
                     },
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       elevation: 4,
                     ),
-                    child: const Text('Return to Dashboard', style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: const Text(
+                      'Return to Dashboard',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
               ),
