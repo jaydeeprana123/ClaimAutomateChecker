@@ -73,6 +73,8 @@ class _PreauthListScreenState extends State<PreauthListScreen> {
           final preauthId = (item['preauth_id'] ?? item['id'] ?? '').toString().toLowerCase();
           final packageCode = (item['package_code'] ?? '').toString().toLowerCase();
           final verdict = (item['verdict'] ?? '').toString().toLowerCase();
+          final admissionDate = (item['admission_date'] ?? '').toString().toLowerCase();
+          final dischargeDate = (item['discharge_date'] ?? '').toString().toLowerCase();
           
           final patientData = item['patient'];
           String patientName = '';
@@ -94,7 +96,9 @@ class _PreauthListScreenState extends State<PreauthListScreen> {
               verdict.contains(lowercaseQuery) ||
               patientName.contains(lowercaseQuery) ||
               pmjayNumber.contains(lowercaseQuery) ||
-              patientId.contains(lowercaseQuery);
+              patientId.contains(lowercaseQuery) ||
+              admissionDate.contains(lowercaseQuery) ||
+              dischargeDate.contains(lowercaseQuery);
         }).toList();
       }
     });
@@ -354,6 +358,7 @@ class _PreauthListScreenState extends State<PreauthListScreen> {
               columns: const [
                 DataColumn(label: Text('Ref / ID')),
                 DataColumn(label: Text('Patient')),
+                DataColumn(label: Text('Dates')),
                 DataColumn(label: Text('Package Code')),
                 DataColumn(label: Text('Verdict')),
                 DataColumn(label: Text('Confidence')),
@@ -381,6 +386,9 @@ class _PreauthListScreenState extends State<PreauthListScreen> {
                   patientName = item['patient_name'] ?? 'Patient #$patientId';
                   pmjayNumber = item['pmjay_number'] ?? '';
                 }
+
+                final admissionDate = item['admission_date'] ?? '-';
+                final dischargeDate = item['discharge_date'] ?? '-';
 
                 return DataRow(
                   cells: [
@@ -410,6 +418,26 @@ class _PreauthListScreenState extends State<PreauthListScreen> {
                               ),
                           ],
                         ),
+                      ),
+                    ),
+                    DataCell(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Adm: $admissionDate',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Dis: $dischargeDate',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.darkGrey,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     DataCell(Text(packageCode)),
@@ -576,6 +604,24 @@ class _PreauthListScreenState extends State<PreauthListScreen> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: AppColors.darkGrey,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${item['admission_date'] ?? '-'}  to  ${item['discharge_date'] ?? '-'}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.darkGrey,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Row(

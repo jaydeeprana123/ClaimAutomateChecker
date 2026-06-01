@@ -194,8 +194,8 @@ class AdminController extends GetxController {
     try {
       final newDoc = await repository.createPackageDocument(code, doc);
       if (newDoc != null) {
-        await fetchPackageDocuments(code);
         Get.back(); // Close dialog first to avoid GetX snackbar popping issues
+        await fetchPackageDocuments(code);
         Get.snackbar(
           'Success',
           'Package document created successfully',
@@ -224,8 +224,8 @@ class AdminController extends GetxController {
     try {
       final updatedDoc = await repository.updatePackageDocument(code, docId, doc);
       if (updatedDoc != null) {
-        await fetchPackageDocuments(code);
         Get.back(); // Close dialog first to avoid GetX snackbar popping issues
+        await fetchPackageDocuments(code);
         Get.snackbar(
           'Success',
           'Package document updated successfully',
@@ -254,8 +254,8 @@ class AdminController extends GetxController {
     try {
       final success = await repository.deletePackageDocument(code, docId);
       if (success) {
-        await fetchPackageDocuments(code);
         Get.back(); // Close dialog first to avoid GetX snackbar popping issues
+        await fetchPackageDocuments(code);
         Get.snackbar(
           'Success',
           'Package document deleted successfully',
@@ -307,8 +307,8 @@ class AdminController extends GetxController {
     try {
       final result = await repository.createTextFieldGroup(name, description, isActive);
       if (result != null) {
-        await fetchTextFieldGroups();
         Get.back(); // Close dialog first to avoid GetX snackbar popping issues
+        await fetchTextFieldGroups();
         Get.snackbar(
           'Success',
           'Text field group created successfully',
@@ -416,8 +416,8 @@ class AdminController extends GetxController {
     try {
       final result = await repository.createTextField(name, description, isActive);
       if (result != null) {
-        await fetchTextFields();
         Get.back(); // Close dialog first to avoid GetX snackbar popping issues
+        await fetchTextFields();
         Get.snackbar(
           'Success',
           'Text field created successfully',

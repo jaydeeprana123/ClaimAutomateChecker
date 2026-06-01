@@ -307,7 +307,7 @@ class AdminRepository implements IAdminRepository {
         options: _getOptions(),
       );
 
-      return response.statusCode == 200;
+      return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       AppLogger.printData("deletePackageDocument error", e.toString());
       return false;
@@ -415,7 +415,7 @@ class AdminRepository implements IAdminRepository {
         '/api/v1/admin/text-field-groups/$groupId',
         options: _getOptions(),
       );
-      return response.statusCode == 200;
+      return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       AppLogger.printData("deleteTextFieldGroup error", e.toString());
       return false;
@@ -501,7 +501,7 @@ class AdminRepository implements IAdminRepository {
         '/api/v1/admin/text-fields/$fieldId',
         options: _getOptions(),
       );
-      return response.statusCode == 200;
+      return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       AppLogger.printData("deleteTextField error", e.toString());
       return false;
@@ -562,7 +562,7 @@ class AdminRepository implements IAdminRepository {
         '/api/v1/admin/text-field-groups/$groupId/mappings/$mappingId',
         options: _getOptions(),
       );
-      return response.statusCode == 200;
+      return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       AppLogger.printData("removeFieldFromGroup error", e.toString());
       return false;
