@@ -263,7 +263,7 @@ class PatientListScreen extends StatelessWidget {
                               size: 20,
                               color: AppColors.success,
                             ),
-                            tooltip: 'Start Claim',
+                            tooltip: 'Start Preauth',
                             onPressed: () => Get.to(() => SelectPackageScreen(patient: patient)),
                           ),
                           IconButton(

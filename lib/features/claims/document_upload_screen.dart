@@ -61,12 +61,16 @@ class DocumentUploadScreen extends StatefulWidget {
   final Patient patient;
   final PackageModel package;
   final Map<String, List<PackageDocument>> documentGroups;
+  final String stage; // 'preauth' or 'claim'
+  final int? preauthId;
 
   const DocumentUploadScreen({
     super.key,
     required this.patient,
     required this.package,
     required this.documentGroups,
+    this.stage = 'preauth',
+    this.preauthId,
   });
 
   @override
@@ -548,8 +552,10 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
-                    'Hospitalization Details',
+                  Text(
+                    widget.stage == 'preauth'
+                        ? 'Preauth Details'
+                        : 'Hospitalization Details',
                     style: AppTextStyles.heading2,
                   ),
                 ],
@@ -561,9 +567,11 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Please provide the hospitalization details to finalize the claim submission.',
-                        style: TextStyle(
+                      Text(
+                        widget.stage == 'preauth'
+                            ? 'Please provide the preauth details to finalize the submission.'
+                            : 'Please provide the hospitalization details to finalize the claim submission.',
+                        style: const TextStyle(
                           color: AppColors.darkGrey,
                           fontSize: 13,
                         ),
@@ -619,40 +627,42 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      // Discharge Date field
-                      InkWell(
-                        onTap: () async {
-                          final selected = await showDatePicker(
-                            context: context,
-                            initialDate: dischargeDate,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime(2100),
-                          );
-                          if (selected != null) {
-                            setDialogState(() {
-                              dischargeDate = selected;
-                            });
-                          }
-                        },
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: 'Discharge Date',
-                            prefixIcon: const Icon(Icons.logout_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+                      if (widget.stage != 'preauth') ...[
+                        const SizedBox(height: 16),
+                        // Discharge Date field
+                        InkWell(
+                          onTap: () async {
+                            final selected = await showDatePicker(
+                              context: context,
+                              initialDate: dischargeDate,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (selected != null) {
+                              setDialogState(() {
+                                dischargeDate = selected;
+                              });
+                            }
+                          },
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              labelText: 'Discharge Date',
+                              prefixIcon: const Icon(Icons.logout_outlined),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
+                            child: Text(
+                              '${dischargeDate.year}-${dischargeDate.month.toString().padLeft(2, '0')}-${dischargeDate.day.toString().padLeft(2, '0')}',
+                              style: const TextStyle(fontSize: 14),
                             ),
-                          ),
-                          child: Text(
-                            '${dischargeDate.year}-${dischargeDate.month.toString().padLeft(2, '0')}-${dischargeDate.day.toString().padLeft(2, '0')}',
-                            style: const TextStyle(fontSize: 14),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -668,7 +678,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                 ElevatedButton(
                   onPressed: () {
                     if (formKey.currentState!.validate()) {
-                      if (dischargeDate.isBefore(admissionDate)) {
+                      if (widget.stage != 'preauth' && dischargeDate.isBefore(admissionDate)) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(
@@ -684,8 +694,9 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                         'hospital_id': hospitalIdController.text.trim(),
                         'admission_date':
                             '${admissionDate.year}-${admissionDate.month.toString().padLeft(2, '0')}-${admissionDate.day.toString().padLeft(2, '0')}',
-                        'discharge_date':
-                            '${dischargeDate.year}-${dischargeDate.month.toString().padLeft(2, '0')}-${dischargeDate.day.toString().padLeft(2, '0')}',
+                        if (widget.stage != 'preauth')
+                          'discharge_date':
+                              '${dischargeDate.year}-${dischargeDate.month.toString().padLeft(2, '0')}-${dischargeDate.day.toString().padLeft(2, '0')}',
                       });
                     }
                   },
@@ -716,20 +727,22 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: Card(
           child: Padding(
-            padding: EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(
+                const CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
-                  'Submitting claim to PMJAY...',
-                  style: TextStyle(fontWeight: FontWeight.w500),
+                  widget.stage == 'preauth'
+                      ? 'Submitting preauth to PMJAY...'
+                      : 'Submitting claim to PMJAY...',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -769,78 +782,150 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
       final patientRepository = PatientRepository();
       final patientId = int.tryParse(widget.patient.id) ?? 0;
 
-      final response = await patientRepository.submitClaim(
-        patientId: patientId,
-        packageCode: widget.package.code,
-        hospitalId: details['hospital_id'],
-        admissionDate: details['admission_date'],
-        dischargeDate: details['discharge_date'],
-        documents: claimDocuments,
-      );
+      if (widget.stage == 'preauth') {
+        final response = await patientRepository.submitPreauth(
+          patientId: patientId,
+          packageCode: widget.package.code,
+          hospitalId: details['hospital_id'],
+          admissionDate: details['admission_date'],
+          documents: claimDocuments,
+        );
 
-      // Pop the loading dialog
-      Navigator.of(context).pop();
+        // Pop the loading dialog
+        Navigator.of(context).pop();
 
-      setState(() {
-        _isSubmitting = false;
-      });
+        setState(() {
+          _isSubmitting = false;
+        });
 
-      if (response != null && response['claim_id'] != null) {
-        final claimId = response['claim_id'];
+        if (response != null && (response['preauth_id'] != null || response['claim_id'] != null)) {
+          final preauthId = response['preauth_id'] ?? response['claim_id'];
 
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: AppColors.success, size: 32),
-                SizedBox(width: 12),
-                Text('Submission Successful', style: AppTextStyles.heading2),
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: AppColors.success, size: 32),
+                  SizedBox(width: 12),
+                  Text('Preauth Successful', style: AppTextStyles.heading2),
+                ],
+              ),
+              content: Text(
+                'Preauth submitted successfully! Preauth ID: $preauthId.\nProceed to Step 5: AI Scoring and Analysis?',
+                style: AppTextStyles.bodyMedium,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // pop success dialog
+                    Navigator.of(context).popUntil((r) => r.isFirst); // return to dashboard
+                  },
+                  child: const Text(
+                    'Return to Dashboard',
+                    style: TextStyle(color: AppColors.darkGrey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // pop success dialog
+                    Get.to(() => AiAnalysisResultScreen(preauthId: preauthId));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Start AI Analysis'),
+                ),
               ],
             ),
-            content: Text(
-              'Claim submitted successfully! Claim ID: $claimId.\nProceed to Step 5: AI Scoring and Analysis?',
-              style: AppTextStyles.bodyMedium,
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Preauth submitted, but no preauth ID returned.'),
+              backgroundColor: AppColors.warning,
+              behavior: SnackBarBehavior.floating,
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(); // pop success dialog
-                  Navigator.of(
-                    context,
-                  ).popUntil((r) => r.isFirst); // return to dashboard
-                },
-                child: const Text(
-                  'Return to Dashboard',
-                  style: TextStyle(color: AppColors.darkGrey),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop(); // pop success dialog
-                  Get.to(() => AiAnalysisResultScreen(claimId: claimId));
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Start AI Analysis'),
-              ),
-            ],
-          ),
-        );
+          );
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Claim submitted, but no claim ID returned.'),
-            backgroundColor: AppColors.warning,
-            behavior: SnackBarBehavior.floating,
-          ),
+        final response = await patientRepository.submitClaim(
+          patientId: patientId,
+          packageCode: widget.package.code,
+          hospitalId: details['hospital_id'],
+          admissionDate: details['admission_date'],
+          dischargeDate: details['discharge_date'],
+          documents: claimDocuments,
+          preauthId: widget.preauthId,
         );
+
+        // Pop the loading dialog
+        Navigator.of(context).pop();
+
+        setState(() {
+          _isSubmitting = false;
+        });
+
+        if (response != null && (response['claim_id'] != null || response['preauth_id'] != null)) {
+          final claimId = response['claim_id'] ?? response['preauth_id'];
+
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: AppColors.success, size: 32),
+                  SizedBox(width: 12),
+                  Text('Submission Successful', style: AppTextStyles.heading2),
+                ],
+              ),
+              content: Text(
+                'Claim submitted successfully! Claim ID: $claimId.\nProceed to Step 5: AI Scoring and Analysis?',
+                style: AppTextStyles.bodyMedium,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // pop success dialog
+                    Navigator.of(context).popUntil((r) => r.isFirst); // return to dashboard
+                  },
+                  child: const Text(
+                    'Return to Dashboard',
+                    style: TextStyle(color: AppColors.darkGrey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // pop success dialog
+                    Get.to(() => AiAnalysisResultScreen(claimId: claimId));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Start AI Analysis'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Claim submitted, but no claim ID returned.'),
+              backgroundColor: AppColors.warning,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     } catch (e) {
       // Pop loading dialog
@@ -867,9 +952,11 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Step 4 — Document Upload',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        title: Text(
+          widget.stage == 'preauth'
+              ? 'Step 4 — Preauth Document Upload'
+              : 'Step 4 — Claim Document Upload',
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.primaryDark,
@@ -1162,8 +1249,10 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                     strokeWidth: 2.5,
                   ),
                 )
-              : const Text(
-                  'Finalize Claim Submission',
+              : Text(
+                  widget.stage == 'preauth'
+                      ? 'Finalize Preauth Submission'
+                      : 'Finalize Claim Submission',
                   style: AppTextStyles.button,
                 ),
         ),
@@ -1222,7 +1311,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
               ),
               label: Text(
                 _currentStepIndex == _stepKeys.length - 1
-                    ? 'Finalize Claim'
+                    ? (widget.stage == 'preauth' ? 'Finalize Preauth' : 'Finalize Claim')
                     : 'Next Step',
                 style: const TextStyle(
                   color: Colors.white,

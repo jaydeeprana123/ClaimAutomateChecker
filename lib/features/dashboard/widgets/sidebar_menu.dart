@@ -44,6 +44,22 @@ class SidebarMenu extends StatelessWidget {
                     onTap: () => controller.changeIndex(1),
                   ),
                 ),
+                Obx(
+                  () => _buildNavItem(
+                    Icons.assignment_turned_in_rounded,
+                    'Pre-Authorizations',
+                    isActive: controller.selectedIndex.value == 2,
+                    onTap: () => controller.changeIndex(2),
+                  ),
+                ),
+                Obx(
+                  () => _buildNavItem(
+                    Icons.receipt_long_rounded,
+                    'Claims',
+                    isActive: controller.selectedIndex.value == 3,
+                    onTap: () => controller.changeIndex(3),
+                  ),
+                ),
               ],
             ),
           ),

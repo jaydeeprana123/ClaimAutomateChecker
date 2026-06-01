@@ -238,6 +238,8 @@ class AdminRepository implements IAdminRepository {
         'mandatory': doc.mandatory,
         'sort_order': doc.sortOrder,
         'notes': doc.notes,
+        'stage': doc.stage,
+        'clinical_relevant': doc.clinicalRelevant,
       };
       final response = await _dio.post(
         '/api/v1/admin/packages/$code/documents',
@@ -248,6 +250,10 @@ class AdminRepository implements IAdminRepository {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return PackageDocument.fromJson(response.data);
       }
+      return null;
+    } on DioException catch (e) {
+      AppLogger.printData("createPackageDocument DioException", 
+        "Status: ${e.response?.statusCode}, Data: ${e.response?.data}, Message: ${e.message}");
       return null;
     } catch (e) {
       AppLogger.printData("createPackageDocument error", e.toString());
@@ -270,6 +276,8 @@ class AdminRepository implements IAdminRepository {
         'mandatory': doc.mandatory,
         'sort_order': doc.sortOrder,
         'notes': doc.notes,
+        'stage': doc.stage,
+        'clinical_relevant': doc.clinicalRelevant,
       };
       final response = await _dio.put(
         '/api/v1/admin/packages/$code/documents/$docId',
@@ -280,6 +288,10 @@ class AdminRepository implements IAdminRepository {
       if (response.statusCode == 200) {
         return PackageDocument.fromJson(response.data);
       }
+      return null;
+    } on DioException catch (e) {
+      AppLogger.printData("updatePackageDocument DioException", 
+        "Status: ${e.response?.statusCode}, Data: ${e.response?.data}, Message: ${e.message}");
       return null;
     } catch (e) {
       AppLogger.printData("updatePackageDocument error", e.toString());

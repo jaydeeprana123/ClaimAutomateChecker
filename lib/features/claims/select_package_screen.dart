@@ -57,6 +57,7 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
       final schemaData = await patientRepository.getFormSchema(
         _selectedPackage!.code,
         patientId,
+        stage: 'preauth',
       );
 
       Map<String, List<PackageDocument>> docGroups = {};
@@ -83,6 +84,7 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
           patient: widget.patient,
           package: _selectedPackage!,
           documentGroups: docGroups,
+          stage: 'preauth',
         ),
       );
     } catch (e) {
@@ -102,6 +104,7 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
           patient: widget.patient,
           package: _selectedPackage!,
           documentGroups: const {},
+          stage: 'preauth',
         ),
       );
     }
@@ -270,7 +273,7 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
               ),
               const SizedBox(width: 16),
               const Text(
-                'Select Claim Package',
+                'Select Preauth Package',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -376,7 +379,7 @@ class _SelectPackageScreenState extends State<SelectPackageScreen> {
                     : _proceedToDocumentUpload,
                 icon: const Icon(Icons.arrow_forward, color: Colors.white),
                 label: const Text(
-                  'Start Claim & Upload Documents',
+                  'Start Preauth & Upload Documents',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

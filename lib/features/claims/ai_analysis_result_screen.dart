@@ -6,7 +6,8 @@ import '../patients/patient_repository.dart';
 
 class AiAnalysisResultScreen extends StatefulWidget {
   final int? claimId;
-  const AiAnalysisResultScreen({super.key, this.claimId});
+  final int? preauthId;
+  const AiAnalysisResultScreen({super.key, this.claimId, this.preauthId});
 
   @override
   State<AiAnalysisResultScreen> createState() => _AiAnalysisResultScreenState();
@@ -44,7 +45,7 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
-    if (widget.claimId != null) {
+    if (widget.claimId != null || widget.preauthId != null) {
       _fetchClaimScore();
     } else {
       // Fallback/mock mode if no claimId is provided
@@ -86,24 +87,31 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
   Future<void> _fetchClaimScore() async {
     try {
       final patientRepository = PatientRepository();
+      final isPreauth = widget.preauthId != null;
 
       // First, try to fetch an existing report to avoid redundant slow scoring
       Map<String, dynamic>? report;
       try {
-        report = await patientRepository.getClaimReport(widget.claimId!);
+        if (isPreauth) {
+          report = await patientRepository.getPreauthReport(widget.preauthId!);
+        } else {
+          report = await patientRepository.getClaimReport(widget.claimId!);
+        }
       } catch (e) {
-        // If GET /report fails (e.g., claim not yet scored), proceed to scoring flow
+        // If GET /report fails (e.g., not yet scored), proceed to scoring flow
         AppLogger.printData(
-          "getClaimReport error/not found, proceeding to score",
+          isPreauth
+              ? "getPreauthReport error/not found, proceeding to score"
+              : "getClaimReport error/not found, proceeding to score",
           e.toString(),
         );
       }
 
       if (report == null) {
         // Step 2: Call Preflight Check
-        final preflight = await patientRepository.preflightCheck(
-          widget.claimId!,
-        );
+        final preflight = isPreauth
+            ? await patientRepository.preflightCheckPreauth(widget.preauthId!)
+            : await patientRepository.preflightCheck(widget.claimId!);
         if (preflight == null) {
           throw Exception('Failed to load preflight check from server.');
         }
@@ -137,8 +145,10 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
           return;
         }
 
-        // Step 3: Call Score Claim
-        report = await patientRepository.scoreClaim(widget.claimId!);
+        // Step 3: Call Score
+        report = isPreauth
+            ? await patientRepository.scorePreauth(widget.preauthId!)
+            : await patientRepository.scoreClaim(widget.claimId!);
         if (report == null) {
           throw Exception('Failed to load score report from server.');
         }
@@ -162,7 +172,9 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
         _verdict = report['verdict'] ?? 'REVIEW';
 
         if (_verdict == 'PASS') {
-          _verdictLabel = 'Highly Confident - Claim Pass';
+          _verdictLabel = widget.preauthId != null
+              ? 'Highly Confident - Preauth Pass'
+              : 'Highly Confident - Claim Pass';
         } else if (_verdict == 'FAIL') {
           _verdictLabel = 'Rejected / Failed Policies';
         } else {
@@ -268,13 +280,17 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
         ),
         const SizedBox(height: 32),
         Text(
-          'AI is analyzing the claim documents...',
+          widget.preauthId != null
+              ? 'AI is analyzing the preauth documents...'
+              : 'AI is analyzing the claim documents...',
           style: AppTextStyles.heading2.copyWith(color: AppColors.primaryDark),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Cross-referencing policies and verifying medical records.',
-          style: TextStyle(color: AppColors.darkGrey, fontSize: 16),
+        Text(
+          widget.preauthId != null
+              ? 'Cross-referencing policies and verifying pre-authorization documents.'
+              : 'Cross-referencing policies and verifying medical records.',
+          style: const TextStyle(color: AppColors.darkGrey, fontSize: 16),
         ),
       ],
     );
@@ -457,7 +473,9 @@ class _AiAnalysisResultScreenState extends State<AiAnalysisResultScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'The AI has completed checking the documents against policy guidelines and past records. A higher score indicates a stronger probability of an authentic and compliant claim.',
+                  widget.preauthId != null
+                      ? 'The AI has completed checking the documents against policy guidelines and past records. A higher score indicates a stronger probability of an authentic and compliant pre-authorization.'
+                      : 'The AI has completed checking the documents against policy guidelines and past records. A higher score indicates a stronger probability of an authentic and compliant claim.',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.darkGrey,
                     height: 1.5,

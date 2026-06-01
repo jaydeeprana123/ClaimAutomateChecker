@@ -195,6 +195,7 @@ class AdminController extends GetxController {
       final newDoc = await repository.createPackageDocument(code, doc);
       if (newDoc != null) {
         await fetchPackageDocuments(code);
+        Get.back(); // Close dialog first to avoid GetX snackbar popping issues
         Get.snackbar(
           'Success',
           'Package document created successfully',
@@ -224,6 +225,7 @@ class AdminController extends GetxController {
       final updatedDoc = await repository.updatePackageDocument(code, docId, doc);
       if (updatedDoc != null) {
         await fetchPackageDocuments(code);
+        Get.back(); // Close dialog first to avoid GetX snackbar popping issues
         Get.snackbar(
           'Success',
           'Package document updated successfully',
@@ -253,6 +255,7 @@ class AdminController extends GetxController {
       final success = await repository.deletePackageDocument(code, docId);
       if (success) {
         await fetchPackageDocuments(code);
+        Get.back(); // Close dialog first to avoid GetX snackbar popping issues
         Get.snackbar(
           'Success',
           'Package document deleted successfully',

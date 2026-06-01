@@ -5,6 +5,8 @@ import 'widgets/sidebar_menu.dart';
 import 'widgets/main_content_area.dart';
 import 'widgets/right_panel.dart';
 import '../patients/patient_list_screen.dart';
+import 'preauth_list_screen.dart';
+import 'claim_list_screen.dart';
 import 'dashboard_controller.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -24,6 +26,10 @@ class DashboardScreen extends StatelessWidget {
             return const MainContentArea();
           case 1:
             return const PatientListScreen();
+          case 2:
+            return const PreauthListScreen();
+          case 3:
+            return const ClaimListScreen();
           default:
             return const MainContentArea();
         }
@@ -60,10 +66,20 @@ class DashboardScreen extends StatelessWidget {
           backgroundColor: AppColors.surface,
           foregroundColor: AppColors.primaryDark,
           elevation: 1,
-          title: Obx(() => Text(
-                controller.selectedIndex.value == 0 ? 'Dashboard' : 'Patients',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              )),
+          title: Obx(() {
+            switch (controller.selectedIndex.value) {
+              case 0:
+                return const Text('Dashboard', style: TextStyle(fontWeight: FontWeight.bold));
+              case 1:
+                return const Text('Patients', style: TextStyle(fontWeight: FontWeight.bold));
+              case 2:
+                return const Text('Pre-Authorizations', style: TextStyle(fontWeight: FontWeight.bold));
+              case 3:
+                return const Text('Claims', style: TextStyle(fontWeight: FontWeight.bold));
+              default:
+                return const Text('Dashboard', style: TextStyle(fontWeight: FontWeight.bold));
+            }
+          }),
           actions: [
             Builder(
               builder: (context) => IconButton(

@@ -13,14 +13,25 @@ class PackageDocumentsScreen extends StatefulWidget {
   State<PackageDocumentsScreen> createState() => _PackageDocumentsScreenState();
 }
 
-class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
+class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with SingleTickerProviderStateMixin {
   final AdminController controller = Get.find<AdminController>();
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      setState(() {}); // Rebuild to filter the documents list
+    });
     controller.fetchPackageDocuments(widget.package.code);
     controller.fetchTextFieldGroups();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   void _showAddDocumentDialog() {
@@ -35,6 +46,8 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
     bool isLoadingFields = false;
     String selectedDataType = 'string';
     bool isMandatory = true;
+    String selectedStage = 'preauth';
+    bool isClinicalRelevant = false;
 
     Get.dialog(
       Dialog(
@@ -271,6 +284,53 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
                       ),
                       const SizedBox(height: 16),
 
+                      // Stage & Clinical Relevant Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: selectedStage,
+                              decoration: InputDecoration(
+                                labelText: 'Stage',
+                                prefixIcon: const Icon(Icons.layers_outlined),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'preauth', child: Text('Pre-Auth')),
+                                DropdownMenuItem(value: 'claim', child: Text('Claim')),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setStateDialog(() {
+                                    selectedStage = val;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isClinicalRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isClinicalRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Clinical Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
                       // Notes Field
                       TextFormField(
                         controller: notesController,
@@ -314,11 +374,10 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
                                   mandatory: isMandatory,
                                   sortOrder: int.parse(sortOrderController.text),
                                   notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
+                                  stage: selectedStage,
+                                  clinicalRelevant: isClinicalRelevant,
                                 );
-                                final success = await controller.createPackageDocument(widget.package.code, doc);
-                                if (success) {
-                                  Get.back(); // Pop the dialog on success
-                                }
+                                await controller.createPackageDocument(widget.package.code, doc);
                               }
                             },
                             style: ElevatedButton.styleFrom(
@@ -381,6 +440,8 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
     bool isLoadingFields = false;
     String selectedDataType = doc.dataType;
     bool isMandatory = doc.mandatory;
+    String selectedStage = doc.stage;
+    bool isClinicalRelevant = doc.clinicalRelevant;
 
     // Safety check in case the loaded mapping doesn't contain the currently selected key ID
     if (selectedFieldKeyId != null && !mappedFields.any((f) => f.fieldId == selectedFieldKeyId)) {
@@ -622,6 +683,53 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
                       ),
                       const SizedBox(height: 16),
 
+                      // Stage & Clinical Relevant Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: selectedStage,
+                              decoration: InputDecoration(
+                                labelText: 'Stage',
+                                prefixIcon: const Icon(Icons.layers_outlined),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'preauth', child: Text('Pre-Auth')),
+                                DropdownMenuItem(value: 'claim', child: Text('Claim')),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setStateDialog(() {
+                                    selectedStage = val;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isClinicalRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isClinicalRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Clinical Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
                       // Notes Field
                       TextFormField(
                         controller: notesController,
@@ -667,16 +775,15 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
                                   mandatory: isMandatory,
                                   sortOrder: int.parse(sortOrderController.text),
                                   notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
+                                  stage: selectedStage,
+                                  clinicalRelevant: isClinicalRelevant,
                                 );
                                 if (doc.id != null) {
-                                  final success = await controller.updatePackageDocument(
+                                  await controller.updatePackageDocument(
                                     widget.package.code,
                                     doc.id!,
                                     updatedDoc,
                                   );
-                                  if (success) {
-                                    Get.back(); // Pop the dialog on success
-                                  }
                                 }
                               }
                             },
@@ -724,13 +831,10 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
           ElevatedButton(
             onPressed: () async {
               if (doc.id != null) {
-                final success = await controller.deletePackageDocument(
+                await controller.deletePackageDocument(
                   widget.package.code,
                   doc.id!,
                 );
-                if (success) {
-                  Get.back();
-                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -758,14 +862,38 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
           decoration: const BoxDecoration(gradient: AppColors.headerGradient),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          tabs: const [
+            Tab(text: 'ALL'),
+            Tab(text: 'PRE-AUTH'),
+            Tab(text: 'CLAIM'),
+          ],
+        ),
       ),
       body: Obx(() {
         if (controller.isLoadingDocuments.value && controller.packageDocuments.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (controller.packageDocuments.isEmpty) {
-          return _buildEmptyState();
+        final filteredDocs = controller.packageDocuments.where((doc) {
+          if (_tabController.index == 0) return true;
+          if (_tabController.index == 1) return doc.stage == 'preauth';
+          return doc.stage == 'claim';
+        }).toList();
+
+        if (filteredDocs.isEmpty) {
+          String filterName = _tabController.index == 1 ? 'Pre-Auth' : (_tabController.index == 2 ? 'Claim' : '');
+          return _buildEmptyState(
+            title: filterName.isNotEmpty ? 'No $filterName document rules' : 'No document rules defined',
+            subtitle: filterName.isNotEmpty
+                ? 'Define the required files, groups, and mandates for the $filterName stage under this package.'
+                : 'Define the required files, groups, and mandates for claims registered under the ${widget.package.name} (${widget.package.code}) package.',
+          );
         }
 
         return Padding(
@@ -777,9 +905,9 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
               const SizedBox(height: 20),
               Expanded(
                 child: ListView.builder(
-                  itemCount: controller.packageDocuments.length,
+                  itemCount: filteredDocs.length,
                   itemBuilder: (context, index) {
-                    final doc = controller.packageDocuments[index];
+                    final doc = filteredDocs[index];
                     return _buildDocumentCard(doc);
                   },
                 ),
@@ -798,6 +926,12 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
   }
 
   Widget _buildSummaryHeader() {
+    final filteredCount = controller.packageDocuments.where((doc) {
+      if (_tabController.index == 0) return true;
+      if (_tabController.index == 1) return doc.stage == 'preauth';
+      return doc.stage == 'claim';
+    }).length;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -827,7 +961,9 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Total Configured Documents: ${controller.packageDocuments.length}',
+                _tabController.index == 0
+                    ? 'Total Configured Documents: ${controller.packageDocuments.length}'
+                    : 'Documents in this stage: $filteredCount (out of ${controller.packageDocuments.length})',
                 style: const TextStyle(color: AppColors.darkGrey, fontSize: 13),
               ),
             ],
@@ -907,6 +1043,16 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
                       _buildTag('Type: ${doc.dataType}', Colors.teal.withOpacity(0.1), Colors.teal),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      _buildTag('Stage: ${doc.stage.toUpperCase()}', Colors.purple.withOpacity(0.1), Colors.purple),
+                      if (doc.clinicalRelevant) ...[
+                        const SizedBox(width: 8),
+                        _buildTag('Clinical Relevant', Colors.red.withOpacity(0.1), Colors.red),
+                      ],
+                    ],
+                  ),
                   if (doc.notes != null && doc.notes!.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Container(
@@ -965,7 +1111,7 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState({String? title, String? subtitle}) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32.0),
@@ -978,9 +1124,9 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
               color: AppColors.grey.withOpacity(0.5),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'No document rules defined',
-              style: TextStyle(
+            Text(
+              title ?? 'No document rules defined',
+              style: const TextStyle(
                 fontSize: 18,
                 color: AppColors.darkGrey,
                 fontWeight: FontWeight.bold,
@@ -988,7 +1134,7 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Define the required files, groups, and mandates for claims registered under the ${widget.package.name} (${widget.package.code}) package.',
+              subtitle ?? 'Define the required files, groups, and mandates for claims registered under the ${widget.package.name} (${widget.package.code}) package.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.darkGrey),
             ),

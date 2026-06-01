@@ -87,6 +87,8 @@ class PackageDocument {
   final bool mandatory;
   final int sortOrder;
   final String? notes;
+  final String stage;      // 'preauth' or 'claim'
+  final bool clinicalRelevant;
 
   PackageDocument({
     this.id,
@@ -100,6 +102,8 @@ class PackageDocument {
     this.mandatory = true,
     this.sortOrder = 0,
     this.notes,
+    this.stage = 'preauth',
+    this.clinicalRelevant = false,
   });
 
   factory PackageDocument.fromJson(Map<String, dynamic> json) {
@@ -115,6 +119,8 @@ class PackageDocument {
       mandatory: json['mandatory'] ?? true,
       sortOrder: json['sort_order'] ?? 0,
       notes: json['notes'],
+      stage: json['stage'] ?? 'preauth',
+      clinicalRelevant: json['clinical_relevant'] ?? false,
     );
   }
 
@@ -131,6 +137,8 @@ class PackageDocument {
       'mandatory': mandatory,
       'sort_order': sortOrder,
       'notes': notes,
+      'stage': stage,
+      'clinical_relevant': clinicalRelevant,
     };
   }
 }
