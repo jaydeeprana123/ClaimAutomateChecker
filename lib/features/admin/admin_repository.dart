@@ -6,6 +6,7 @@ import '../../core/utils/logger.dart';
 import 'user_model.dart';
 import 'package:claim_automate_checker/features/admin/package_model.dart';
 import 'text_field_group_model.dart';
+import 'agent_prompt_model.dart';
 
 abstract class IAdminRepository {
   Future<List<AdminUser>> getUsers();
@@ -14,6 +15,7 @@ abstract class IAdminRepository {
   Future<bool> createPackage(PackageModel package);
   Future<bool> updateUser(String username, AdminUser user);
   Future<bool> updatePackage(String code, PackageModel package);
+  Future<PackageWeightsResponse?> getPackageWeights(String code);
   Future<bool> updatePackageWeights(String code, PackageWeightsUpdate update);
   Future<List<PackageDocument>> getPackageDocuments(String code);
   Future<PackageDocument?> createPackageDocument(
@@ -26,6 +28,9 @@ abstract class IAdminRepository {
     PackageDocument doc,
   );
   Future<bool> deletePackageDocument(String code, int docId);
+  Future<List<String>> getAgentScoringNames();
+  Future<List<AgentPrompt>> getAgentPrompts();
+  Future<AgentPrompt?> updateAgentPrompt(String agentName, String systemPrompt);
 
   // Text Field Group Management
   Future<List<TextFieldGroupResponse>> getTextFieldGroups();
@@ -206,6 +211,80 @@ class AdminRepository implements IAdminRepository {
   }
 
   @override
+  Future<PackageWeightsResponse?> getPackageWeights(String code) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/admin/packages/$code/weights',
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200) {
+        return PackageWeightsResponse.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.printData("getPackageWeights error", e.toString());
+      return null;
+    }
+  }
+
+  @override
+  Future<List<String>> getAgentScoringNames() async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/admin/agents/scoring-names',
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200) {
+        final List data = response.data;
+        return data.map((item) => item.toString()).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.printData("getAgentScoringNames error", e.toString());
+      return [];
+    }
+  }
+
+  @override
+  Future<List<AgentPrompt>> getAgentPrompts() async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/admin/agents/prompts',
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200) {
+        final List data = response.data;
+        return data.map((json) => AgentPrompt.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      AppLogger.printData("getAgentPrompts error", e.toString());
+      return [];
+    }
+  }
+
+  @override
+  Future<AgentPrompt?> updateAgentPrompt(
+    String agentName,
+    String systemPrompt,
+  ) async {
+    try {
+      final response = await _dio.put(
+        '/api/v1/admin/agents/$agentName/prompt',
+        data: {'system_prompt': systemPrompt},
+        options: _getOptions(),
+      );
+      if (response.statusCode == 200) {
+        return AgentPrompt.fromJson(response.data);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.printData("updateAgentPrompt error", e.toString());
+      return null;
+    }
+  }
+
+  @override
   Future<List<PackageDocument>> getPackageDocuments(String code) async {
     try {
       final response = await _dio.get(
@@ -240,6 +319,8 @@ class AdminRepository implements IAdminRepository {
         'notes': doc.notes,
         'stage': doc.stage,
         'clinical_relevant': doc.clinicalRelevant,
+        'billing_relevant': doc.billingRelevant,
+        'discharge_relevant': doc.dischargeRelevant,
       };
       final response = await _dio.post(
         '/api/v1/admin/packages/$code/documents',
@@ -278,6 +359,8 @@ class AdminRepository implements IAdminRepository {
         'notes': doc.notes,
         'stage': doc.stage,
         'clinical_relevant': doc.clinicalRelevant,
+        'billing_relevant': doc.billingRelevant,
+        'discharge_relevant': doc.dischargeRelevant,
       };
       final response = await _dio.put(
         '/api/v1/admin/packages/$code/documents/$docId',

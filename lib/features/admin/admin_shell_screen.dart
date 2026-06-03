@@ -9,6 +9,7 @@ import 'screens/text_field_groups_list_view.dart';
 import 'widgets/admin_sidebar.dart';
 import '../../core/theme/app_colors.dart';
 import '../auth/login_screen.dart';
+import 'screens/agent_prompts_list_view.dart';
 
 class AdminShellScreen extends StatelessWidget {
   const AdminShellScreen({super.key});
@@ -24,6 +25,7 @@ class AdminShellScreen extends StatelessWidget {
       const UserListView(),
       const PackageListView(),
       const TextFieldGroupsListView(),
+      const AgentPromptsListView(),
     ];
 
     final List<String> titles = [
@@ -31,6 +33,7 @@ class AdminShellScreen extends StatelessWidget {
       'Users',
       'Packages',
       'Text Field Groups',
+      'Agent Prompts',
     ];
 
     return Scaffold(
@@ -62,6 +65,9 @@ class AdminShellScreen extends StatelessWidget {
                     if (controller.selectedIndex.value == 3) {
                       controller.fetchTextFieldGroups();
                       controller.fetchTextFields();
+                    }
+                    if (controller.selectedIndex.value == 4) {
+                      controller.fetchAgentPrompts();
                     }
                   },
                   icon: const Icon(Icons.refresh, color: Colors.white),
@@ -118,6 +124,9 @@ class AdminShellScreen extends StatelessWidget {
               if (controller.selectedIndex.value == 3) {
                 controller.fetchTextFieldGroups();
                 controller.fetchTextFields();
+              }
+              if (controller.selectedIndex.value == 4) {
+                controller.fetchAgentPrompts();
               }
             },
             icon: const Icon(Icons.refresh, color: AppColors.primary),

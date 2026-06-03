@@ -1,3 +1,4 @@
+import 'package:claim_automate_checker/core/utils/logger.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'admin_repository.dart';
@@ -6,6 +7,7 @@ import 'text_field_group_model.dart';
 import '../../core/theme/app_colors.dart';
 
 import 'package:claim_automate_checker/features/admin/package_model.dart';
+import 'agent_prompt_model.dart';
 
 class AdminController extends GetxController {
   final IAdminRepository repository;
@@ -18,9 +20,11 @@ class AdminController extends GetxController {
   final RxInt selectedIndex = 0.obs;
 
   // Text Field Group observables
-  final RxList<TextFieldGroupResponse> textFieldGroups = <TextFieldGroupResponse>[].obs;
+  final RxList<TextFieldGroupResponse> textFieldGroups =
+      <TextFieldGroupResponse>[].obs;
   final RxList<TextFieldResponse> textFields = <TextFieldResponse>[].obs;
-  final RxMap<int, TextFieldGroupDetailResponse> groupDetails = <int, TextFieldGroupDetailResponse>{}.obs;
+  final RxMap<int, TextFieldGroupDetailResponse> groupDetails =
+      <int, TextFieldGroupDetailResponse>{}.obs;
   final RxBool isLoadingGroups = false.obs;
   final RxBool isLoadingFields = false.obs;
 
@@ -39,6 +43,7 @@ class AdminController extends GetxController {
       if (textFieldGroups.isEmpty) fetchTextFieldGroups();
       if (textFields.isEmpty) fetchTextFields();
     }
+    if (index == 4 && agentPrompts.isEmpty) fetchAgentPrompts();
   }
 
   Future<void> fetchUsers() async {
@@ -61,12 +66,23 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<void> createUser(String username, String fullName, String email, String role, String password) async {
+  Future<void> createUser(
+    String username,
+    String fullName,
+    String email,
+    String role,
+    String password,
+  ) async {
     isLoading.value = true;
     try {
-      final user = AdminUser(username: username, fullName: fullName, email: email, role: role);
+      final user = AdminUser(
+        username: username,
+        fullName: fullName,
+        email: email,
+        role: role,
+      );
       final success = await repository.createUser(user, password);
-      
+
       if (success) {
         await fetchUsers();
         Get.back(); // Navigate back from Create User screen
@@ -95,7 +111,7 @@ class AdminController extends GetxController {
     isLoading.value = true;
     try {
       final success = await repository.createPackage(package);
-      
+
       if (success) {
         await fetchPackages();
         Get.back(); // Navigate back from Create Package screen
@@ -127,11 +143,21 @@ class AdminController extends GetxController {
       if (success) {
         await fetchUsers();
         Get.back();
-        Get.snackbar('Success', 'User updated successfully',
-            backgroundColor: AppColors.success, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          'Success',
+          'User updated successfully',
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
       } else {
-        Get.snackbar('Error', 'Failed to update user',
-            backgroundColor: AppColors.error, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          'Error',
+          'Failed to update user',
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
     } finally {
       isLoading.value = false;
@@ -140,37 +166,142 @@ class AdminController extends GetxController {
 
   Future<void> updatePackage(String code, PackageModel package) async {
     isLoading.value = true;
+
     try {
       final success = await repository.updatePackage(code, package);
       if (success) {
         await fetchPackages();
         Get.back();
-        Get.snackbar('Success', 'Package updated successfully',
-            backgroundColor: AppColors.success, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          'Success',
+          'Package updated successfully',
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
       } else {
-        Get.snackbar('Error', 'Failed to update package',
-            backgroundColor: AppColors.error, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          'Error',
+          'Failed to update package',
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<void> updatePackageWeights(String code, PackageWeightsUpdate update) async {
+  Future<void> updatePackageWeights(
+    String code,
+    PackageWeightsUpdate update,
+  ) async {
     isLoading.value = true;
+    AppLogger.printData(
+      "PackageWeightsUpdate list",
+      update.toJson().toString(),
+    );
+
     try {
       final success = await repository.updatePackageWeights(code, update);
       if (success) {
         await fetchPackages();
         Get.back();
-        Get.snackbar('Success', 'Package weights updated successfully',
-            backgroundColor: AppColors.success, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          'Success',
+          'Package weights updated successfully',
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
       } else {
-        Get.snackbar('Error', 'Failed to update package weights',
-            backgroundColor: AppColors.error, colorText: Colors.white, snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          'Error',
+          'Failed to update package weights',
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  final RxBool isLoadingWeights = false.obs;
+
+  Future<List<PackageWeight>> fetchPackageWeights(String code) async {
+    isLoadingWeights.value = true;
+    try {
+      final response = await repository.getPackageWeights(code);
+      if (response != null) {
+        return response.weights;
+      }
+      return [];
+    } finally {
+      isLoadingWeights.value = false;
+    }
+  }
+
+  final RxList<String> agentScoringNames = <String>[].obs;
+  final RxBool isLoadingAgents = false.obs;
+
+  Future<void> fetchAgentScoringNames() async {
+    isLoadingAgents.value = true;
+    try {
+      final data = await repository.getAgentScoringNames();
+      agentScoringNames.assignAll(data);
+    } finally {
+      isLoadingAgents.value = false;
+    }
+  }
+
+  final RxList<AgentPrompt> agentPrompts = <AgentPrompt>[].obs;
+  final RxBool isLoadingPrompts = false.obs;
+
+  Future<void> fetchAgentPrompts() async {
+    isLoadingPrompts.value = true;
+    try {
+      final data = await repository.getAgentPrompts();
+      agentPrompts.assignAll(data);
+    } finally {
+      isLoadingPrompts.value = false;
+    }
+  }
+
+  Future<bool> updateAgentPrompt(String agentName, String systemPrompt) async {
+    isLoadingPrompts.value = true;
+    try {
+      final updated = await repository.updateAgentPrompt(agentName, systemPrompt);
+      if (updated != null) {
+        Get.back(); // Close dialog first to avoid GetX snackbar popping issues
+        final idx = agentPrompts.indexWhere((p) => p.agentName == agentName);
+        if (idx != -1) {
+          agentPrompts[idx] = updated;
+        } else {
+          await fetchAgentPrompts();
+        }
+        Get.snackbar(
+          'Success',
+          'Agent prompt updated successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.success,
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to update agent prompt',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } finally {
+      isLoadingPrompts.value = false;
     }
   }
 
@@ -219,10 +350,18 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<bool> updatePackageDocument(String code, int docId, PackageDocument doc) async {
+  Future<bool> updatePackageDocument(
+    String code,
+    int docId,
+    PackageDocument doc,
+  ) async {
     isLoadingDocuments.value = true;
     try {
-      final updatedDoc = await repository.updatePackageDocument(code, docId, doc);
+      final updatedDoc = await repository.updatePackageDocument(
+        code,
+        docId,
+        doc,
+      );
       if (updatedDoc != null) {
         Get.back(); // Close dialog first to avoid GetX snackbar popping issues
         await fetchPackageDocuments(code);
@@ -302,10 +441,18 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<bool> createTextFieldGroup(String name, String? description, bool isActive) async {
+  Future<bool> createTextFieldGroup(
+    String name,
+    String? description,
+    bool isActive,
+  ) async {
     isLoadingGroups.value = true;
     try {
-      final result = await repository.createTextFieldGroup(name, description, isActive);
+      final result = await repository.createTextFieldGroup(
+        name,
+        description,
+        isActive,
+      );
       if (result != null) {
         Get.back(); // Close dialog first to avoid GetX snackbar popping issues
         await fetchTextFieldGroups();
@@ -332,10 +479,21 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<bool> updateTextFieldGroup(int groupId, String? name, String? description, bool? isActive, {bool closeDialog = false}) async {
+  Future<bool> updateTextFieldGroup(
+    int groupId,
+    String? name,
+    String? description,
+    bool? isActive, {
+    bool closeDialog = false,
+  }) async {
     isLoadingGroups.value = true;
     try {
-      final result = await repository.updateTextFieldGroup(groupId, name, description, isActive);
+      final result = await repository.updateTextFieldGroup(
+        groupId,
+        name,
+        description,
+        isActive,
+      );
       if (result != null) {
         await fetchTextFieldGroups();
         // If the group details were already fetched, refresh them
@@ -411,10 +569,18 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<bool> createTextField(String name, String? description, bool isActive) async {
+  Future<bool> createTextField(
+    String name,
+    String? description,
+    bool isActive,
+  ) async {
     isLoadingFields.value = true;
     try {
-      final result = await repository.createTextField(name, description, isActive);
+      final result = await repository.createTextField(
+        name,
+        description,
+        isActive,
+      );
       if (result != null) {
         Get.back(); // Close dialog first to avoid GetX snackbar popping issues
         await fetchTextFields();
@@ -441,10 +607,21 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<bool> updateTextField(int fieldId, String? name, String? description, bool? isActive, {bool closeDialog = false}) async {
+  Future<bool> updateTextField(
+    int fieldId,
+    String? name,
+    String? description,
+    bool? isActive, {
+    bool closeDialog = false,
+  }) async {
     isLoadingFields.value = true;
     try {
-      final result = await repository.updateTextField(fieldId, name, description, isActive);
+      final result = await repository.updateTextField(
+        fieldId,
+        name,
+        description,
+        isActive,
+      );
       if (result != null) {
         await fetchTextFields();
         if (closeDialog) {
@@ -563,7 +740,9 @@ class AdminController extends GetxController {
     }
   }
 
-  Future<List<TextFieldGroupMappingResponse>> getGroupMappings(int groupId) async {
+  Future<List<TextFieldGroupMappingResponse>> getGroupMappings(
+    int groupId,
+  ) async {
     return await repository.getGroupMappings(groupId);
   }
 }

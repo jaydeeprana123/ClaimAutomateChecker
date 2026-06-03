@@ -58,6 +58,29 @@ class PackageWeight {
   }
 }
 
+class PackageWeightsResponse {
+  final String packageCode;
+  final List<PackageWeight> weights;
+  final String? updatedAt;
+
+  PackageWeightsResponse({
+    required this.packageCode,
+    required this.weights,
+    this.updatedAt,
+  });
+
+  factory PackageWeightsResponse.fromJson(Map<String, dynamic> json) {
+    return PackageWeightsResponse(
+      packageCode: json['package_code'] ?? '',
+      weights: (json['weights'] as List?)
+              ?.map((w) => PackageWeight.fromJson(w))
+              .toList() ??
+          [],
+      updatedAt: json['updated_at'],
+    );
+  }
+}
+
 class PackageWeightsUpdate {
   final List<PackageWeight> weights;
   final String updatedBy;
@@ -89,6 +112,8 @@ class PackageDocument {
   final String? notes;
   final String stage;      // 'preauth' or 'claim'
   final bool clinicalRelevant;
+  final bool billingRelevant;
+  final bool dischargeRelevant;
 
   PackageDocument({
     this.id,
@@ -104,6 +129,8 @@ class PackageDocument {
     this.notes,
     this.stage = 'preauth',
     this.clinicalRelevant = false,
+    this.billingRelevant = false,
+    this.dischargeRelevant = false,
   });
 
   factory PackageDocument.fromJson(Map<String, dynamic> json) {
@@ -121,6 +148,8 @@ class PackageDocument {
       notes: json['notes'],
       stage: json['stage'] ?? 'preauth',
       clinicalRelevant: json['clinical_relevant'] ?? false,
+      billingRelevant: json['billing_relevant'] ?? false,
+      dischargeRelevant: json['discharge_relevant'] ?? false,
     );
   }
 
@@ -139,6 +168,8 @@ class PackageDocument {
       'notes': notes,
       'stage': stage,
       'clinical_relevant': clinicalRelevant,
+      'billing_relevant': billingRelevant,
+      'discharge_relevant': dischargeRelevant,
     };
   }
 }

@@ -62,6 +62,14 @@ class AdminSidebar extends StatelessWidget {
                     onTap: () => controller.changeTabIndex(3),
                   ),
                 ),
+                Obx(
+                  () => _buildNavItem(
+                    Icons.psychology_alt_rounded,
+                    'Agent Prompts',
+                    isActive: controller.selectedIndex.value == 4,
+                    onTap: () => controller.changeTabIndex(4),
+                  ),
+                ),
               ],
             ),
           ),

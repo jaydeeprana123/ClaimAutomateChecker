@@ -17,20 +17,69 @@ class UpdatePackageWeightsScreen extends StatefulWidget {
 class _UpdatePackageWeightsScreenState
     extends State<UpdatePackageWeightsScreen> {
   final List<PackageWeight> _weights = [];
-  final _agentNameController = TextEditingController();
+  String? _selectedAgentName;
   final _weightController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    _loadWeights();
+    Get.find<AdminController>().fetchAgentScoringNames();
+  }
+
+  Future<void> _loadWeights() async {
+    final controller = Get.find<AdminController>();
+    final weights = await controller.fetchPackageWeights(widget.package.code);
+    setState(() {
+      _weights.addAll(
+        weights.map(
+          (w) => PackageWeight(agentName: w.agentName, weight: w.weight * 100),
+        ),
+      );
+    });
+  }
+
   void _addWeight() {
-    if (_agentNameController.text.isNotEmpty &&
+    if (_selectedAgentName != null &&
         _weightController.text.isNotEmpty) {
+      final inputWeight = double.tryParse(_weightController.text);
+
+      double currentTotal = _weights.fold(
+        0.0,
+        (sum, item) => sum + item.weight,
+      );
+      double maxAllowed = 100.0 - currentTotal;
+
+      if (maxAllowed < 1) {
+        Get.snackbar(
+          'Limit Reached',
+          'Total weight is already 100. Please remove existing weights first.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      if (inputWeight == null || inputWeight < 1 || inputWeight > maxAllowed) {
+        Get.snackbar(
+          'Invalid Input',
+          'Weight must be between 1 and ${maxAllowed.toInt()}',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.error,
+          colorText: Colors.white,
+        );
+        return;
+      }
+
       setState(() {
         _weights.add(
           PackageWeight(
-            agentName: _agentNameController.text,
-            weight: double.parse(_weightController.text),
+            agentName: _selectedAgentName!,
+            weight: inputWeight,
           ),
         );
-        _agentNameController.clear();
+        _selectedAgentName = null;
         _weightController.clear();
       });
     }
@@ -78,15 +127,51 @@ class _UpdatePackageWeightsScreenState
               children: [
                 Expanded(
                   flex: 2,
-                  child: TextField(
-                    controller: _agentNameController,
-                    decoration: InputDecoration(
-                      labelText: 'Agent Name',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  child: Obx(() {
+                    if (controller.isLoadingAgents.value) {
+                      return const Center(
+                        child: SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    }
+                    
+                    // Filter out already added agents
+                    final addedAgents = _weights.map((w) => w.agentName).toSet();
+                    final availableAgents = controller.agentScoringNames
+                        .where((name) => !addedAgents.contains(name))
+                        .toList();
+
+                    // If _selectedAgentName is not in availableAgents, reset it to null
+                    if (_selectedAgentName != null && !availableAgents.contains(_selectedAgentName)) {
+                      _selectedAgentName = null;
+                    }
+
+                    return DropdownButtonFormField<String>(
+                      value: _selectedAgentName,
+                      hint: const Text('Select Agent'),
+                      decoration: InputDecoration(
+                        labelText: 'Agent Name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
                       ),
-                    ),
-                  ),
+                      items: availableAgents.map((name) {
+                        return DropdownMenuItem<String>(
+                          value: name,
+                          child: Text(name),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedAgentName = val;
+                        });
+                      },
+                    );
+                  }),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -125,53 +210,57 @@ class _UpdatePackageWeightsScreenState
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: _weights.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No weights added yet',
-                        style: TextStyle(color: Colors.grey[600]),
+              child: Obx(() {
+                if (controller.isLoadingWeights.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (_weights.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No weights added yet',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  itemCount: _weights.length,
+                  itemBuilder: (context, index) {
+                    final w = _weights[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    )
-                  : ListView.builder(
-                      itemCount: _weights.length,
-                      itemBuilder: (context, index) {
-                        final w = _weights[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            title: Text(
-                              w.agentName,
+                      child: ListTile(
+                        title: Text(
+                          w.agentName,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              w.weight.toString(),
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: AppColors.primary,
                               ),
                             ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  w.weight.toString(),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.redAccent,
-                                  ),
-                                  onPressed: () => _removeWeight(index),
-                                ),
-                              ],
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Colors.redAccent,
+                              ),
+                              onPressed: () => _removeWeight(index),
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -182,8 +271,28 @@ class _UpdatePackageWeightsScreenState
                   onPressed: controller.isLoading.value || _weights.isEmpty
                       ? null
                       : () {
+                          double currentTotal = _weights.fold(0.0, (sum, item) => sum + item.weight);
+                          if ((currentTotal - 100.0).abs() > 0.001) {
+                            Get.snackbar(
+                              'Error',
+                              'Total weight must be exactly 100',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: AppColors.error,
+                              colorText: Colors.white,
+                            );
+                            return;
+                          }
+
+                          final scaledWeights = _weights
+                              .map(
+                                (w) => PackageWeight(
+                                  agentName: w.agentName,
+                                  weight: w.weight / 100,
+                                ),
+                              )
+                              .toList();
                           final update = PackageWeightsUpdate(
-                            weights: _weights,
+                            weights: scaledWeights,
                             updatedBy: StorageService.getRole() ?? 'admin',
                           );
                           controller.updatePackageWeights(

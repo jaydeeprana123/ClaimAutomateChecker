@@ -48,6 +48,8 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
     bool isMandatory = true;
     String selectedStage = 'preauth';
     bool isClinicalRelevant = false;
+    bool isBillingRelevant = false;
+    bool isDischargeRelevant = false;
 
     Get.dialog(
       Dialog(
@@ -128,7 +130,7 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                               final fields = await controller.getGroupMappings(val);
                               setStateDialog(() {
                                 mappedFields = fields;
-                                isLoadingFields = false;
+                                  isLoadingFields = false;
                               });
                             } catch (e) {
                               setStateDialog(() {
@@ -284,31 +286,33 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                       ),
                       const SizedBox(height: 16),
 
-                      // Stage & Clinical Relevant Row
-                      Row(
+                      // Stage Dropdown
+                      DropdownButtonFormField<String>(
+                        value: selectedStage,
+                        decoration: InputDecoration(
+                          labelText: 'Stage',
+                          prefixIcon: const Icon(Icons.layers_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'preauth', child: Text('Pre-Auth')),
+                          DropdownMenuItem(value: 'claim', child: Text('Claim')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setStateDialog(() {
+                              selectedStage = val;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Relevance Flags Wrap
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
                         children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: selectedStage,
-                              decoration: InputDecoration(
-                                labelText: 'Stage',
-                                prefixIcon: const Icon(Icons.layers_outlined),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              items: const [
-                                DropdownMenuItem(value: 'preauth', child: Text('Pre-Auth')),
-                                DropdownMenuItem(value: 'claim', child: Text('Claim')),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setStateDialog(() {
-                                    selectedStage = val;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 16),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -323,7 +327,43 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                               ),
                               const Text(
                                 'Clinical Relevant',
-                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey),
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isBillingRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isBillingRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Billing Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isDischargeRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isDischargeRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Discharge Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
                               ),
                             ],
                           ),
@@ -376,6 +416,8 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                                   notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
                                   stage: selectedStage,
                                   clinicalRelevant: isClinicalRelevant,
+                                  billingRelevant: isBillingRelevant,
+                                  dischargeRelevant: isDischargeRelevant,
                                 );
                                 await controller.createPackageDocument(widget.package.code, doc);
                               }
@@ -442,6 +484,8 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
     bool isMandatory = doc.mandatory;
     String selectedStage = doc.stage;
     bool isClinicalRelevant = doc.clinicalRelevant;
+    bool isBillingRelevant = doc.billingRelevant;
+    bool isDischargeRelevant = doc.dischargeRelevant;
 
     // Safety check in case the loaded mapping doesn't contain the currently selected key ID
     if (selectedFieldKeyId != null && !mappedFields.any((f) => f.fieldId == selectedFieldKeyId)) {
@@ -683,31 +727,33 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                       ),
                       const SizedBox(height: 16),
 
-                      // Stage & Clinical Relevant Row
-                      Row(
+                      // Stage Dropdown
+                      DropdownButtonFormField<String>(
+                        value: selectedStage,
+                        decoration: InputDecoration(
+                          labelText: 'Stage',
+                          prefixIcon: const Icon(Icons.layers_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'preauth', child: Text('Pre-Auth')),
+                          DropdownMenuItem(value: 'claim', child: Text('Claim')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setStateDialog(() {
+                              selectedStage = val;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Relevance Flags Wrap
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
                         children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: selectedStage,
-                              decoration: InputDecoration(
-                                labelText: 'Stage',
-                                prefixIcon: const Icon(Icons.layers_outlined),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              items: const [
-                                DropdownMenuItem(value: 'preauth', child: Text('Pre-Auth')),
-                                DropdownMenuItem(value: 'claim', child: Text('Claim')),
-                              ],
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setStateDialog(() {
-                                    selectedStage = val;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 16),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -722,7 +768,43 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                               ),
                               const Text(
                                 'Clinical Relevant',
-                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey),
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isBillingRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isBillingRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Billing Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isDischargeRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isDischargeRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Discharge Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
                               ),
                             ],
                           ),
@@ -777,6 +859,8 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                                   notes: notesController.text.trim().isEmpty ? null : notesController.text.trim(),
                                   stage: selectedStage,
                                   clinicalRelevant: isClinicalRelevant,
+                                  billingRelevant: isBillingRelevant,
+                                  dischargeRelevant: isDischargeRelevant,
                                 );
                                 if (doc.id != null) {
                                   await controller.updatePackageDocument(
@@ -1044,13 +1128,18 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _buildTag('Stage: ${doc.stage.toUpperCase()}', Colors.purple.withOpacity(0.1), Colors.purple),
-                      if (doc.clinicalRelevant) ...[
-                        const SizedBox(width: 8),
+                      if (doc.clinicalRelevant)
                         _buildTag('Clinical Relevant', Colors.red.withOpacity(0.1), Colors.red),
-                      ],
+                      if (doc.billingRelevant)
+                        _buildTag('Billing Relevant', Colors.blue.withOpacity(0.1), Colors.blue),
+                      if (doc.dischargeRelevant)
+                        _buildTag('Discharge Relevant', Colors.green.withOpacity(0.1), Colors.green),
                     ],
                   ),
                   if (doc.notes != null && doc.notes!.isNotEmpty) ...[
