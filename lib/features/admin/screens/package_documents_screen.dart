@@ -50,6 +50,11 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
     bool isClinicalRelevant = false;
     bool isBillingRelevant = false;
     bool isDischargeRelevant = false;
+    bool isIdentityRelevant = false;
+    bool isLabRelevant = false;
+    bool isImageRelevant = false;
+    bool isRadiologyRelevant = false;
+    bool isIcpRelevant = false;
 
     Get.dialog(
       Dialog(
@@ -367,6 +372,96 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                               ),
                             ],
                           ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isIdentityRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isIdentityRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Identity Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isLabRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isLabRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Lab Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isImageRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isImageRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Image Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isRadiologyRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isRadiologyRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Radiology Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isIcpRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isIcpRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'ICP Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -418,6 +513,11 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                                   clinicalRelevant: isClinicalRelevant,
                                   billingRelevant: isBillingRelevant,
                                   dischargeRelevant: isDischargeRelevant,
+                                  identityRelevant: isIdentityRelevant,
+                                  labRelevant: isLabRelevant,
+                                  imageRelevant: isImageRelevant,
+                                  radiologyRelevant: isRadiologyRelevant,
+                                  icpRelevant: isIcpRelevant,
                                 );
                                 await controller.createPackageDocument(widget.package.code, doc);
                               }
@@ -486,6 +586,11 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
     bool isClinicalRelevant = doc.clinicalRelevant;
     bool isBillingRelevant = doc.billingRelevant;
     bool isDischargeRelevant = doc.dischargeRelevant;
+    bool isIdentityRelevant = doc.identityRelevant;
+    bool isLabRelevant = doc.labRelevant;
+    bool isImageRelevant = doc.imageRelevant;
+    bool isRadiologyRelevant = doc.radiologyRelevant;
+    bool isIcpRelevant = doc.icpRelevant;
 
     // Safety check in case the loaded mapping doesn't contain the currently selected key ID
     if (selectedFieldKeyId != null && !mappedFields.any((f) => f.fieldId == selectedFieldKeyId)) {
@@ -808,6 +913,96 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                               ),
                             ],
                           ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isIdentityRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isIdentityRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Identity Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isLabRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isLabRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Lab Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isImageRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isImageRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Image Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isRadiologyRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isRadiologyRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'Radiology Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: isIcpRelevant,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    isIcpRelevant = val ?? false;
+                                  });
+                                },
+                              ),
+                              const Text(
+                                'ICP Relevant',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkGrey, fontSize: 13),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -861,6 +1056,11 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                                   clinicalRelevant: isClinicalRelevant,
                                   billingRelevant: isBillingRelevant,
                                   dischargeRelevant: isDischargeRelevant,
+                                  identityRelevant: isIdentityRelevant,
+                                  labRelevant: isLabRelevant,
+                                  imageRelevant: isImageRelevant,
+                                  radiologyRelevant: isRadiologyRelevant,
+                                  icpRelevant: isIcpRelevant,
                                 );
                                 if (doc.id != null) {
                                   await controller.updatePackageDocument(
@@ -1135,11 +1335,21 @@ class _PackageDocumentsScreenState extends State<PackageDocumentsScreen> with Si
                     children: [
                       _buildTag('Stage: ${doc.stage.toUpperCase()}', Colors.purple.withOpacity(0.1), Colors.purple),
                       if (doc.clinicalRelevant)
-                        _buildTag('Clinical Relevant', Colors.red.withOpacity(0.1), Colors.red),
+                        _buildTag('Clinical', Colors.red.withOpacity(0.1), Colors.red),
                       if (doc.billingRelevant)
-                        _buildTag('Billing Relevant', Colors.blue.withOpacity(0.1), Colors.blue),
+                        _buildTag('Billing', Colors.blue.withOpacity(0.1), Colors.blue),
                       if (doc.dischargeRelevant)
-                        _buildTag('Discharge Relevant', Colors.green.withOpacity(0.1), Colors.green),
+                        _buildTag('Discharge', Colors.green.withOpacity(0.1), Colors.green),
+                      if (doc.identityRelevant)
+                        _buildTag('Identity', Colors.indigo.withOpacity(0.1), Colors.indigo),
+                      if (doc.labRelevant)
+                        _buildTag('Lab', Colors.amber.withOpacity(0.1), Colors.amber.shade800),
+                      if (doc.imageRelevant)
+                        _buildTag('Image', Colors.cyan.withOpacity(0.1), Colors.cyan.shade800),
+                      if (doc.radiologyRelevant)
+                        _buildTag('Radiology', Colors.deepOrange.withOpacity(0.1), Colors.deepOrange),
+                      if (doc.icpRelevant)
+                        _buildTag('ICP', Colors.teal.withOpacity(0.1), Colors.teal),
                     ],
                   ),
                   if (doc.notes != null && doc.notes!.isNotEmpty) ...[

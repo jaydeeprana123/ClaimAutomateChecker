@@ -114,6 +114,11 @@ class PackageDocument {
   final bool clinicalRelevant;
   final bool billingRelevant;
   final bool dischargeRelevant;
+  final bool identityRelevant;
+  final bool labRelevant;
+  final bool imageRelevant;
+  final bool radiologyRelevant;
+  final bool icpRelevant;
 
   PackageDocument({
     this.id,
@@ -131,6 +136,11 @@ class PackageDocument {
     this.clinicalRelevant = false,
     this.billingRelevant = false,
     this.dischargeRelevant = false,
+    this.identityRelevant = false,
+    this.labRelevant = false,
+    this.imageRelevant = false,
+    this.radiologyRelevant = false,
+    this.icpRelevant = false,
   });
 
   factory PackageDocument.fromJson(Map<String, dynamic> json) {
@@ -150,6 +160,11 @@ class PackageDocument {
       clinicalRelevant: json['clinical_relevant'] ?? false,
       billingRelevant: json['billing_relevant'] ?? false,
       dischargeRelevant: json['discharge_relevant'] ?? false,
+      identityRelevant: json['identity_relevant'] ?? false,
+      labRelevant: json['lab_relevant'] ?? false,
+      imageRelevant: json['image_relevant'] ?? false,
+      radiologyRelevant: json['radiology_relevant'] ?? false,
+      icpRelevant: json['icp_relevant'] ?? false,
     );
   }
 
@@ -170,6 +185,11 @@ class PackageDocument {
       'clinical_relevant': clinicalRelevant,
       'billing_relevant': billingRelevant,
       'discharge_relevant': dischargeRelevant,
+      'identity_relevant': identityRelevant,
+      'lab_relevant': labRelevant,
+      'image_relevant': imageRelevant,
+      'radiology_relevant': radiologyRelevant,
+      'icp_relevant': icpRelevant,
     };
   }
 }

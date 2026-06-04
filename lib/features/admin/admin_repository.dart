@@ -321,6 +321,11 @@ class AdminRepository implements IAdminRepository {
         'clinical_relevant': doc.clinicalRelevant,
         'billing_relevant': doc.billingRelevant,
         'discharge_relevant': doc.dischargeRelevant,
+        'identity_relevant': doc.identityRelevant,
+        'lab_relevant': doc.labRelevant,
+        'image_relevant': doc.imageRelevant,
+        'radiology_relevant': doc.radiologyRelevant,
+        'icp_relevant': doc.icpRelevant,
       };
       final response = await _dio.post(
         '/api/v1/admin/packages/$code/documents',
@@ -361,6 +366,11 @@ class AdminRepository implements IAdminRepository {
         'clinical_relevant': doc.clinicalRelevant,
         'billing_relevant': doc.billingRelevant,
         'discharge_relevant': doc.dischargeRelevant,
+        'identity_relevant': doc.identityRelevant,
+        'lab_relevant': doc.labRelevant,
+        'image_relevant': doc.imageRelevant,
+        'radiology_relevant': doc.radiologyRelevant,
+        'icp_relevant': doc.icpRelevant,
       };
       final response = await _dio.put(
         '/api/v1/admin/packages/$code/documents/$docId',
